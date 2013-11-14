@@ -50,7 +50,7 @@ void System_Init(void)
 	SystemInit();						// Initialize system and update core clock
 	Port_Init();                        // Port Initialization
 	SYSTICK_Config();                   // Systick Initialization
-	UART_Config(LPC_UART0, 57600);      // Uart0 Initialization
+	UART_Config(LPC_UART0, 9600);      // Uart0 Initialization
 	UART_Config(LPC_UART2, 115200);     // Uart2 Initialization
 	led_delay = 1000;                   // Heart Beat rate of 1Sec toggle
 }
