@@ -26,8 +26,42 @@
  */
 
 /* Includes ------------------------------------------------------------------- */
+#include "lpc_system_init.h"
 #include "lpc17xx_gpio.h"
 
+
+
+/* Public Functions ----------------------------------------------------------- */
+/** @addtogroup GPIO_Interrupt_Functions
+ * @{
+ */
+
+
+/*********************************************************************//**
+ * @brief		External interrupt 3 handler sub-routine
+ * @param[in]	None
+ * @return		None
+ **********************************************************************/
+void EINT3_IRQHandler(void)
+{
+	int j;
+	if(GPIO_GetIntStatus(0, 19, 0)) //Rising Edge
+	{
+		GPIO_ClearInt(0,_BIT(19));
+
+		for (j= 0; j<10; j++)
+		{
+			GPIO_ClearValue(0,_BIT(10));
+			delay_ms(250);
+			GPIO_SetValue(0,_BIT(10));
+			delay_ms(250);
+		}
+    }
+}
+
+/**
+ * @}
+ */
 
 /* Private Functions ---------------------------------------------------------- */
 
@@ -242,6 +276,7 @@ uint32_t GPIO_ReadValue(uint8_t portNum)
 
 /*********************************************************************//**
  * @brief		Enable GPIO interrupt (just used for P0.0-P0.30, P2.0-P2.13)
+ *              and P0.12-P0.14 Reserved
  * @param[in]	portNum		Port number to read value, should be: 0 or 2
  * @param[in]	bitValue	Value that contains all bits on GPIO to enable,
  * 							in range from 0 to 0xFFFFFFFF.
