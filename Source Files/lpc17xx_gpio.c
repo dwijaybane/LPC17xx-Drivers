@@ -44,7 +44,7 @@
  **********************************************************************/
 void EINT3_IRQHandler(void)
 {
-	int j;
+/*	int j;
 	if(GPIO_GetIntStatus(0, 19, 0)) //Rising Edge
 	{
 		GPIO_ClearInt(0,_BIT(19));
@@ -56,7 +56,7 @@ void EINT3_IRQHandler(void)
 			GPIO_SetValue(0,_BIT(10));
 			delay_ms(250);
 		}
-    }
+    }*/
 }
 
 /**
