@@ -27,8 +27,6 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc_system_init.h"
-#include "lpc17xx_systick.h"
-#include "lpc17xx_clkpwr.h"
 
 /*
  * Variables
@@ -44,24 +42,13 @@ uint32_t led_timer;
  ***********************************************************************/
 void SysTick_Handler(void)
 {
-	uchar flag;
-
     if(led_timer)
     {
     	--led_timer;
     }
     else
     {
-    	if(flag)
-    	{
-    		GPIO_SetValue(3,_BIT(25));
-    		flag = 0;
-    	}
-    	else
-    	{
-    		GPIO_ClearValue(3,_BIT(25));
-    		flag = 1;
-    	}
+    	LPC_GPIO3->FIOPIN ^= _BIT(25); //Toggle P3.25 Hearbeat led
     	led_timer=led_delay;
     }
 
