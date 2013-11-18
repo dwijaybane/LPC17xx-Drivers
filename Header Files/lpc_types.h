@@ -221,6 +221,68 @@ typedef int32_t(*PFI)();
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
+/******************************************************************************/
+/*                         Bit Banding declarations                           */
+/******************************************************************************/
+/* The processor memory map includes two bit-band regions. These occupy the lowest
+ * 1MB of the SRAM and peripheral memory regions respectively.
+ * + SRAM: 	Bit-band region: 	0x20000000 - 0x20100000
+ * 			Bit-band alias:		0x22000000 - 0x23FFFFFF
+ * + PERI:	Bit-band region:	0x40000000 - 0x40100000
+ * 			Bit-band alias:		0x42000000 - 0x43FFFFFF
+ * The mapping formula:
+ * 		bit_word_offset = (byte_offset * 32) + (bit_number * 4)
+ * 		bit_word_address = bit_band_base + bit_word_offset
+ * where:
+ * 	+ bit_word_offset: the position of the target bit in the bit-band memory region
+ * 	+ bit_word_addr: the address of the word in the alias memory region that maps to the target bit
+ *  + bit_band_base: the starting address of the alias region
+ *  + byte_offset: the number of byte in the bit-band region that contains the targeted bit
+ *  + bit_number: is the bit position (0-7) of the targeted bit
+ *
+ * Note: The fact, the SRAM on LPC1768 just available in two ranges:
+ * 	+ 0x2007C000 - 0x2007FFFF: for SRAM - bank 0
+ *  + 0x20080000 - 0x20083FFF: for SRAM - bank 1
+ *  (And one range for GPIO peripheral but assigned in SRAM ranges: 0x2009C000 - 0x2009FFFF)
+ */
+
+/* Bit band SRAM definitions */
+#define BITBAND_SRAM_REF   0x20000000
+#define BITBAND_SRAM_BASE  0x22000000
+
+#define BITBAND_SRAM(a,b) ((BITBAND_SRAM_BASE + ((a-BITBAND_SRAM_REF)<<5) + (b<<2)))  // Convert SRAM address
+
+/* Bit band PERIPHERAL definitions */
+#define BITBAND_PERI_REF   0x40000000
+#define BITBAND_PERI_BASE  0x42000000
+
+#define BITBAND_PERI(a,b) ((BITBAND_PERI_BASE + ((a-BITBAND_PERI_REF)<<5) + (b<<2)))  // Convert PERI address
+
+/* Basic bit band function definitions */
+#define BITBAND_SRAM_ClearBit(a,b)	(*(volatile uint32_t *) (BITBAND_SRAM(a,b)) = 0)
+#define BITBAND_SRAM_SetBit(a,b)	(*(volatile uint32_t *) (BITBAND_SRAM(a,b)) = 1)
+#define BITBAND_SRAM_GetBit(a,b)	(*(volatile uint32_t *) (BITBAND_SRAM(a,b)))
+
+#define BITBAND_PERI_ClearBit(a,b)	(*(volatile uint32_t *) (BITBAND_PERI(a,b)) = 0)
+#define BITBAND_PERI_SetBit(a,b)	(*(volatile uint32_t *) (BITBAND_PERI(a,b)) = 1)
+#define BITBAND_PERI_GetBit(a,b)	(*(volatile uint32_t *) (BITBAND_PERI(a,b)))
+
+/* Variable address in SRAM
+ * should be in one of two range:
+ * 	+ 0x2007C000 - 0x20083FFF: for SRAM
+ *  + 0x20080000 - 0x20083FFF: for GPIO
+ */
+//#define VAR_ADDRESS		0x2007C000
+//#define VAR_BIT			3 //Bit 3
+
+/* Peripheral address
+ * should be in range: 0x40000000 - 0x40100000
+ */
+//#define PERI_ADDRESS	0x40020000 // SPI Control Register (S0SPCR)
+//#define PERI_BIT		5 //bit 5 - Master mode select
+//or instead of PERI_ADDRESS use LPC_SPI_BASE
+
+
 /**
  * @}
  */
