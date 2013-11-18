@@ -2,7 +2,7 @@
 * $Id$		lpc_switch.h
 *//**
 * @file		lpc_switch.h
-* @brief	Contains all System And Port Initialization code 
+* @brief	Contains all Switch Initialization code
 * @version	1.0
 * @date		15. Nov. 2013
 * @author	Dwijay.Edutech Learning Solutions
