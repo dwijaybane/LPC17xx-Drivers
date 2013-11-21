@@ -373,6 +373,27 @@ void CGRAM_Char_Gen (uchar loc,uchar *p)
 }
 
 
+/*********************************************************************//**
+ * @brief	    This function converts from integer to ascii
+ *              and displays on LCD
+ * @param[in]	VarData	 integer variable
+ * @param[in]	Row		 Row Position
+ * @param[in]	Col		 Col Position
+ * @return 		None
+ **********************************************************************/
+void Display_Decimal_Lcd (uint16 VarData, uchar Row, uchar Col)
+{
+    uchar Character[17]={"0123456789"};
+    uint16 DivValue=10,BaseValue=10;
+    while(DivValue)
+    {
+        Display_Character(Character[VarData/DivValue],Row,Col++,Off);
+        VarData%=DivValue;
+        DivValue/=BaseValue;
+    }
+}
+
+
 /**
  * @}
  */

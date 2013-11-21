@@ -186,6 +186,7 @@ typedef enum
 
 void Lcd_Init (AddrCount_e AddrCount, DispShift_e DispShift);
 void Lcd_Enable (void);
+void Check_Busy (void);
 void Write_Command_Lcd (uchar Command);
 void Write_Data_Lcd (uchar Character);
 void Set_Cursor (uchar LineNum, uchar Position, CursorType_e CursorType);
@@ -193,7 +194,7 @@ void Display_Character (uchar Character, uchar LineNum, uchar Position, CursorTy
 void Display_String (uchar *String, uchar LineNum, uchar Position, CursorType_e CursorType);
 void Display_Shift (ShiftDir_e Direction, CursorType_e CursorType);
 void CGRAM_Char_Gen (uchar loc,uchar *p);
-
+void Display_Decimal_Lcd (uint16 VarData, uchar Row, uchar Col);
 
 
 /**
