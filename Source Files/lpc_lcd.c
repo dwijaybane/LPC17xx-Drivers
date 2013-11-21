@@ -140,10 +140,10 @@ void Lcd_Enable (void)
     uint16 i;
     GPIO_SetValue(2, _BIT(13));    // Set   EN
     #ifdef LCD_4BIT
-        for(i=0;i<75;i++);             // 1 us
+        for(i=0;i<75;i++);         // 1 us
     #endif
     #ifdef LCD_8BIT
-        for(i=0;i<300;i++);             // 3 us
+        for(i=0;i<300;i++);        // 3 us
     #endif
     GPIO_ClearValue(2, _BIT(13));  // Clear   EN
 }
@@ -198,6 +198,8 @@ void Write_Data_Lcd (uchar Character)
 	 uint16 LcdData = Character;
 	 LcdData = LcdData << LCD_DATA_START_PIN;
 	 Mask = (0x0F << (LCD_DATA_START_PIN));
+
+	 Write_Command_Lcd(CURSOR_OFF); // Needed
 
      #ifdef LCD_4BIT
 	 {
