@@ -366,6 +366,7 @@ void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 	/* ---------------------- End of Auto baud rate section ----------------------- */
 }
 
+
 /* UART Init/DeInit functions -------------------------------------------------*/
 /********************************************************************//**
  * @brief		Initializes the UARTx peripheral according to the specified
@@ -878,7 +879,7 @@ int16 getche(LPC_UART_TypeDef *UARTx)
 	    }
 	    else
 	    {
-	    	UART_SendByte(UARTx, key);
+	    	UART_Send(UARTx,&key,1,BLOCKING);
 	    }
 	}
 	else if(UARTx == LPC_UART2)
@@ -906,6 +907,7 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 
 	uchar pointer=0;          /* Pointer in buffer */
 	uchar count=0;            /* character count */
+    uint8_t temp;
 
 	while(1)
 	{
@@ -929,9 +931,15 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 				continue;                    /* no, so get another character */
 			}
 
-			UART_SendByte(UARTx,Out_BACKSPACE);  /* go back one position */
-			UART_SendByte(UARTx,Out_SPACE);      /* erase char */
-			UART_SendByte(UARTx,Out_BACKSPACE);  /* go back one more position */
+			temp = Out_BACKSPACE;
+		//	UART_SendByte(UARTx,Out_BACKSPACE);  /* go back one position */
+			UART_Send(UARTx,&temp,1,BLOCKING);
+			temp = Out_SPACE;
+		//	UART_SendByte(UARTx,Out_SPACE);      /* erase char */
+			UART_Send(UARTx,&temp,1,BLOCKING);
+			temp = Out_BACKSPACE;
+		//	UART_SendByte(UARTx,Out_BACKSPACE);  /* go back one more position */
+			UART_Send(UARTx,&temp,1,BLOCKING);
 
 			pointer--;                     /* decrement pointer */
 			count--;                       /* decrement character count */
@@ -944,13 +952,16 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 			s[pointer] = kb;               /* save character and increment pointer */
 			pointer++;
 			count++;                       /* increment count */
-			UART_SendByte(UARTx,kb);       /* echo character */
+		//	UART_SendByte(UARTx,kb);       /* echo character */
+			UART_Send(UARTx,&kb,1,BLOCKING);
 
 			continue;                      /* and get some more */
 		}
 		else
 		{
-			UART_SendByte(UARTx,In_BELL);   /* ring the bell */
+			temp = In_BELL;
+		//	UART_SendByte(UARTx,In_BELL);   /* ring the bell */
+			UART_Send(UARTx,&temp,1,BLOCKING);
 		}
 	}
 	return(count);
@@ -983,6 +994,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 	uchar hex[]= "0123456789ABCDEF";
 	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000 };
 	unsigned int width_hex[4] = { 0x1, 0x10, 0x100, 0x1000,};
+	unsigned int temp;
 
 	schar format_flag, fill_char;
 	ulong32 u_val, div_val;
@@ -1018,8 +1030,8 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 
 			case 'b':
 				format_flag = va_arg(ap,int);
-				UART_SendByte(UARTx, hex[ (uint16)format_flag >> 4 ]);
-				UART_SendByte(UARTx, hex[ (uint16)format_flag & 0x0F ]);
+				UART_Send(UARTx,&(hex[(uint16)format_flag >> 4]),1,BLOCKING);
+				UART_Send(UARTx,&(hex[(uint16)format_flag & 0x0F]),1,BLOCKING);
 
 				continue;
 
@@ -1027,7 +1039,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 				ptr = va_arg(ap, schar *);
 				while(*ptr)
 				{
-					UART_SendByte(UARTx,*ptr++);
+					UART_Send(UARTx,&(*ptr++),1,BLOCKING);
 				}
 
 				continue;
@@ -1038,7 +1050,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 				u_val = va_arg(ap, ulong32);
 				do
 				{
-					UART_SendByte(UARTx,hex[u_val / div_val]);
+					UART_Send(UARTx,&(hex[u_val/div_val]),1,BLOCKING);
 					u_val %= div_val;
 					div_val /= base;
 				}while(div_val);
@@ -1055,7 +1067,8 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 				if(((int)u_val) < 0)
 				{
 					u_val = - u_val;    /* applied to unsigned type, result still unsigned */
-					UART_SendByte(UARTx,'-');
+					temp = '-';
+				    UART_Send(UARTx,&temp,1,BLOCKING);
 				}
 
 				goto  CONVERSION_LOOP;
@@ -1076,7 +1089,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 
 				do
 				{
-					UART_SendByte(UARTx,hex[u_val / div_val]);
+					UART_Send(UARTx,&(hex[u_val/div_val]),1,BLOCKING);
 					u_val %= div_val;
 					div_val /= base;
 				}while(div_val);
