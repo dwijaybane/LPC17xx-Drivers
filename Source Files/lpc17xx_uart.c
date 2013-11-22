@@ -763,7 +763,7 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
  **********************************************************************/
 int16 getche(LPC_UART_TypeDef *UARTx)
 {
-	uchar key;
+	uint8_t key;
 	if(UARTx == LPC_UART0)
 	{
 		UART_Receive((LPC_UART_TypeDef *)UARTx, &key, 1, BLOCKING);
@@ -888,7 +888,7 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
  **********************************************************************/
 int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 {
-	static const char hex[]= "0123456789ABCDEF";
+	uchar hex[]= "0123456789ABCDEF";
 	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000 };
 	unsigned int width_hex[4] = { 0x1, 0x10, 0x100, 0x1000,};
 
@@ -908,34 +908,34 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 			{                        /* until '%' or '\0' */
 				return (0);
 			}
-			UART_SendByte(UARTx,format_flag);
+			UART_Send(UARTx,&format_flag,1,BLOCKING);
 		}
 
 		switch(format_flag = *format++)
 		{
 			case 'c':
 				format_flag = va_arg(ap, int);
-				UART_SendByte(UARTx,format_flag);
+				UART_Send(UARTx,&format_flag,1,BLOCKING);
 
 				continue;
 
 			default:
-				UART_SendByte(UARTx,format_flag);
+				UART_Send(UARTx,&format_flag,1,BLOCKING);
 
         		continue;
 
 			case 'b':
 				format_flag = va_arg(ap,int);
-				UART_SendByte(UARTx, hex[ format_flag >> 4 ]);
-				UART_SendByte(UARTx, hex[ format_flag & 0x0F ]);
+				UART_SendByte(UARTx, hex[ (uint16)format_flag >> 4 ]);
+				UART_SendByte(UARTx, hex[ (uint16)format_flag & 0x0F ]);
 
 				continue;
 
 			case 's':
-				ptr = va_arg(ap, char *);
-				while(format_flag == *ptr++)
+				ptr = va_arg(ap, schar *);
+				while(*ptr)
 				{
-					UART_SendByte(UARTx,format_flag);
+					UART_SendByte(UARTx,*ptr++);
 				}
 
 				continue;
@@ -979,7 +979,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 				while(div_val > 1 && div_val > u_val)
 				{
 					div_val /= base;
-					UART_SendByte(UARTx,fill_char);
+					UART_Send(UARTx,&fill_char,1,BLOCKING);
 				}
 
 				do
