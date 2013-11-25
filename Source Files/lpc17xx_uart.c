@@ -1,10 +1,10 @@
 /**********************************************************************
-* $Id$		lpc17xx_uart.c				2010-06-18
+* $Id$		lpc17xx_uart.c
 *//**
 * @file		lpc17xx_uart.c
 * @brief	Contains all functions support for UART firmware library on LPC17xx
 * @version	1.0
-* @date		24. July. 2013
+* @date		25. Nov. 2013
 * @author	Dwijay.Edutech Learning Solutions
 ***********************************************************************
 * Software that is described herein is for illustrative purposes only
@@ -30,7 +30,101 @@
 
 /* Private Functions ---------------------------------------------------------- */
 static Status uart_set_divisors(LPC_UART_TypeDef *UARTx, uint32_t baudrate);
+void UART_IntTransmit(LPC_UART_TypeDef *UARTx);
+void UART_IntReceive(LPC_UART_TypeDef *UARTx);
 
+#ifdef INTERRUPT_MODE
+/*********************************************************************//**
+ * @brief	UART0 interrupt handler sub-routine
+ * @param	None
+ * @return	None
+ **********************************************************************/
+void UART0_IRQHandler(void)
+{
+	// Call Standard UART 0 interrupt handler
+	uint32_t intsrc, tmp, tmp1;
+
+	// Determine the interrupt source
+	intsrc = UART_GetIntId(LPC_UART0);
+	tmp = intsrc & UART_IIR_INTID_MASK;
+
+	// Receive Line Status
+	if (tmp == UART_IIR_INTID_RLS)
+	{
+		// Check line status
+		tmp1 = UART_GetLineStatus(LPC_UART0);
+		// Mask out the Receive Ready and Transmit Holding empty status
+		tmp1 &= (UART_LSR_OE | UART_LSR_PE | UART_LSR_FE | UART_LSR_BI | UART_LSR_RXFE);
+		// If any error exist
+		if (tmp1)
+		{
+			while(tmp1)
+			{
+				; //implement error handling here
+			}
+		}
+	}
+
+	// Receive Data Available or Character time-out
+	if ((tmp == UART_IIR_INTID_RDA) || (tmp == UART_IIR_INTID_CTI))
+	{
+		UART_IntReceive(LPC_UART0);
+	}
+
+	// Transmit Holding Empty
+	if (tmp == UART_IIR_INTID_THRE)
+	{
+		UART_IntTransmit(LPC_UART0);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	UART2 interrupt handler sub-routine
+ * @param	None
+ * @return	None
+ **********************************************************************/
+void UART2_IRQHandler(void)
+{
+	// Call Standard UART 2 interrupt handler
+	uint32_t intsrc, tmp, tmp1;
+
+	/* Determine the interrupt source */
+	intsrc = UART_GetIntId(LPC_UART2);
+	tmp = intsrc & UART_IIR_INTID_MASK;
+
+	// Receive Line Status
+	if (tmp == UART_IIR_INTID_RLS)
+	{
+		// Check line status
+		tmp1 = UART_GetLineStatus(LPC_UART2);
+		// Mask out the Receive Ready and Transmit Holding empty status
+		tmp1 &= (UART_LSR_OE | UART_LSR_PE | UART_LSR_FE | UART_LSR_BI | UART_LSR_RXFE);
+		// If any error exist
+		if (tmp1)
+		{
+			while(tmp1)
+			{
+				; //implement error handling here
+			}
+		}
+	}
+
+	// Receive Data Available or Character time-out
+	if ((tmp == UART_IIR_INTID_RDA) || (tmp == UART_IIR_INTID_CTI))
+	{
+		UART_IntReceive(LPC_UART2);
+	}
+
+	// Transmit Holding Empty
+	if (tmp == UART_IIR_INTID_THRE)
+	{
+		UART_IntTransmit(LPC_UART2);
+	}
+}
+
+
+#endif
 
 /*********************************************************************//**
  * @brief		Determines best dividers to get a target clock rate
@@ -272,6 +366,41 @@ void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 
 	// Enable UARTx Transmit
 	UART_TxCmd(UARTx, ENABLE);
+
+#ifdef INTERRUPT_MODE
+	UART_IntConfig(UARTx, UART_INTCFG_RBR, ENABLE);
+	/* Enable UART line status interrupt */
+	UART_IntConfig(UARTx, UART_INTCFG_RLS, ENABLE);
+
+	/**
+	 * Do not enable transmit interrupt here, since it is handled by
+	 * UART_Send() function, just to reset Tx Interrupt state for the
+	 * first time
+	 */
+	TxIntStat = RESET;
+
+	// Reset ring buf head and tail idx
+	__BUF_RESET(rb.rx_head);
+	__BUF_RESET(rb.rx_tail);
+	__BUF_RESET(rb.tx_head);
+	__BUF_RESET(rb.tx_tail);
+
+	if(UARTx == LPC_UART0)
+	{
+		/* preemption = 1, sub-priority = 1 */
+		NVIC_SetPriority(UART0_IRQn, ((0x01<<3)|0x01));
+		/* Enable Interrupt for UART0 channel */
+		NVIC_EnableIRQ(UART0_IRQn);
+	}
+	else if(UARTx == LPC_UART2)
+	{
+		/* preemption = 1, sub-priority = 1 */
+		NVIC_SetPriority(UART2_IRQn, ((0x01<<3)|0x01));
+		/* Enable Interrupt for UART2 channel */
+		NVIC_EnableIRQ(UART2_IRQn);
+	}
+
+#endif
 }
 
 /* UART Init/DeInit functions -------------------------------------------------*/
@@ -604,6 +733,8 @@ uint8_t UART_ReceiveByte(LPC_UART_TypeDef* UARTx)
 	}
 }
 
+
+#ifdef POLLING_MODE
 /*********************************************************************//**
  * @brief		Send a block of data via UART peripheral
  * @param[in]	UARTx	Selected UART peripheral used to send data, should be:
@@ -748,6 +879,8 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
 	}
 	return bRecv;
 }
+#endif
+
 
 /*********************************************************************//**
  * @brief	 The getche() function returns the next character read from the
@@ -763,38 +896,53 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
  **********************************************************************/
 int16 getche(LPC_UART_TypeDef *UARTx)
 {
-	uint8_t key;
-	if(UARTx == LPC_UART0)
+	uint8_t key[1];
+	uint32_t idx, len;
+	while(1)
 	{
-		UART_Receive((LPC_UART_TypeDef *)UARTx, &key, 1, BLOCKING);
-		if ( key == In_CR )
+	    if(UARTx == LPC_UART0)
 	    {
-			return(key);
+		    len = UART_Receive(UARTx, key, 1, BLOCKING);
+		    /* Got some data */
+		    idx = 0;
+		    while (idx < len)
+		    {
+		        if ( key[idx] == In_CR )
+	            {
+			        return(key[idx]);
+	            }
+	            else if ( key[idx] == In_DELETE || key[idx] == In_BACKSPACE )
+	            {
+	    	        return(key[idx]);
+	            }
+	            else if ( key[idx] == In_ESC )
+	            {
+	    	        EscFlag = 1;
+	    	        return ( In_ESC );
+	            }
+	            else if ( key[idx] >= ' ' )
+	            {
+	    	        return (key[idx]);
+	            }
+	            else
+	            {
+	    	        UART_Send(UARTx,&key[idx],1,BLOCKING);
+	            }
+		        idx++;
+		    }
 	    }
-	    else if ( key == In_DELETE || key == In_BACKSPACE )
+	    else if(UARTx == LPC_UART2)
 	    {
-	    	return(key);
-	    }
-	    else if ( key == In_ESC )
-	    {
-	    	EscFlag = 1;
-	    	return ( In_ESC );
-	    }
-	    else if ( key >= ' ' )
-	    {
-	    	return (key);
-	    }
-	    else
-	    {
-	    	UART_Send(UARTx,&key,1,BLOCKING);
+		    len = UART_Receive(UARTx, key, 1, BLOCKING);
+		    /* Got some data */
+		    idx = 0;
+		    while (idx < len)
+		    {
+		    	return(key[idx]);
+		    }
 	    }
 	}
-	else if(UARTx == LPC_UART2)
-	{
-		UART_Receive((LPC_UART_TypeDef *)UARTx, &key, 1, BLOCKING);
-		return(key);
-	}
-	return(0);
+    return(0);
 }
 
 /*********************************************************************//**
@@ -1728,6 +1876,229 @@ uint32_t UART_RS485SendData(LPC_UART1_TypeDef *UARTx, uint8_t *pData, uint32_t s
 	return (UART_RS485Send(UARTx, pData, size, 0));
 }
 
+
+/* UART INTERRUPT functions ---------------------------------------------------------*/
+
+#ifdef INTERRUPT_MODE
+
+/********************************************************************//**
+ * @brief 		UART receive function (ring buffer used)
+ * @param[in]	None
+ * @return 		None
+ *********************************************************************/
+void UART_IntReceive(LPC_UART_TypeDef *UARTx)
+{
+	uint8_t tmpc;
+
+	while(1)
+	{
+		// Call UART read function in UART driver
+		tmpc = UART_ReceiveByte(UARTx);
+		if (tmpc)
+		{
+			/* Check if buffer is more space
+			 * If no more space, remaining character will be trimmed out
+			 */
+			if (!__BUF_IS_FULL(rb.rx_head,rb.rx_tail))
+			{
+				rb.rx[rb.rx_head] = tmpc;
+				__BUF_INCR(rb.rx_head);
+			}
+		}
+		// no more data
+		else
+		{
+			break;
+		}
+	}
+}
+
+/********************************************************************//**
+ * @brief 		UART transmit function (ring buffer used)
+ * @param[in]	None
+ * @return 		None
+ *********************************************************************/
+void UART_IntTransmit(LPC_UART_TypeDef *UARTx)
+{
+	uint32_t bToSend, bSent, timeOut, fifo_cnt;
+	uint8_t *pChar;
+
+    // Disable THRE interrupt
+    UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+
+	/* Wait for FIFO buffer empty, transfer UART_TX_FIFO_SIZE bytes
+	 * of data or break whenever ring buffers are empty */
+	/* Wait until THR empty */
+    while (UART_CheckBusy(UARTx) == SET);
+
+	while (!__BUF_IS_EMPTY(rb.tx_head,rb.tx_tail))
+    {
+        /* Move a piece of data into the transmit FIFO */
+		// None blocking mode
+		pChar = &rb.tx[rb.tx_tail];
+		bToSend = 1;
+		bSent = 0;
+		while (bToSend)
+		{
+			timeOut = UART_BLOCKING_TIMEOUT;
+			// Wait for THR empty with timeout
+			while (!(UARTx->LSR & UART_LSR_THRE))
+			{
+				if (timeOut == 0) break;
+				timeOut--;
+			}
+			// Time out!
+			if(timeOut == 0) break;
+			fifo_cnt = UART_TX_FIFO_SIZE;
+			while (fifo_cnt && bToSend)
+			{
+				UART_SendByte(UARTx, (*pChar++));
+				fifo_cnt--;
+				bToSend--;
+				bSent++;
+			}
+		}
+
+    	if(bSent)
+    	{
+    		/* Update transmit ring FIFO tail pointer */
+    		__BUF_INCR(rb.tx_tail);
+     	}
+    	else
+    	{
+    		break;
+    	}
+    }
+
+    /* If there is no more data to send, disable the transmit
+       interrupt - else enable it or keep it enabled */
+	if (__BUF_IS_EMPTY(rb.tx_head, rb.tx_tail))
+	{
+    	UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+    	// Reset Tx Interrupt state
+    	TxIntStat = RESET;
+    }
+    else
+    {
+      	// Set Tx Interrupt state
+		TxIntStat = SET;
+    	UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+    }
+}
+
+
+/*********************************************************************//**
+ * @brief		Send a block of data via UART peripheral
+ * @param[in]	UARTx	Selected UART peripheral used to send data, should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @param[in]	txbuf 	Pointer to Transmit buffer
+ * @param[in]	buflen 	Length of Transmit buffer
+ * @param[in] 	flag 	Flag used in  UART transfer, should be
+ * 						NONE_BLOCKING or BLOCKING
+ * @return 		Number of bytes sent.
+ *
+ * Note: when using UART in BLOCKING mode, a time-out condition is used
+ * via defined symbol UART_BLOCKING_TIMEOUT.
+ **********************************************************************/
+uint32_t UART_Send(LPC_UART_TypeDef *UARTx, uint8_t *txbuf, uint32_t buflen, TRANSFER_BLOCK_Type flag)
+{
+	uint8_t *data = (uint8_t *) txbuf;
+	uint32_t bytes = 0;
+
+	/* Temporarily lock out UART transmit interrupts during this
+	   read so the UART transmit interrupt won't cause problems
+	   with the index values */
+	UART_IntConfig(UARTx, UART_INTCFG_THRE, DISABLE);
+
+	/* Loop until transmit run buffer is full or until n_bytes
+	   expires */
+	while ((buflen > 0) && (!__BUF_IS_FULL(rb.tx_head, rb.tx_tail)))
+	{
+		/* Write data from buffer into ring buffer */
+		rb.tx[rb.tx_head] = *data;
+		data++;
+
+		/* Increment head pointer */
+		__BUF_INCR(rb.tx_head);
+
+		/* Increment data count and decrement buffer size count */
+		bytes++;
+		buflen--;
+	}
+
+	/**
+	 * Check if current Tx interrupt enable is reset,
+	 * that means the Tx interrupt must be re-enabled
+	 * due to call UART_IntTransmit() function to trigger
+	 * this interrupt type
+	 */
+	if (TxIntStat == RESET)
+	{
+		UART_IntTransmit(UARTx);
+	}
+	/**
+	 * Otherwise, re-enables Tx Interrupt
+	 */
+	else
+	{
+		UART_IntConfig(UARTx, UART_INTCFG_THRE, ENABLE);
+	}
+
+	return bytes;
+}
+
+/*********************************************************************//**
+ * @brief		Receive a block of data via UART peripheral
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @param[out]	rxbuf 	Pointer to Received buffer
+ * @param[in]	buflen 	Length of Received buffer
+ * @param[in] 	flag 	Flag mode, should be NONE_BLOCKING or BLOCKING
+
+ * @return 		Number of bytes received
+ *
+ * Note: when using UART in BLOCKING mode, a time-out condition is used
+ * via defined symbol UART_BLOCKING_TIMEOUT.
+ **********************************************************************/
+uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, uint32_t buflen, TRANSFER_BLOCK_Type flag)
+{
+	uint8_t *data = (uint8_t *) rxbuf;
+	uint32_t bytes = 0;
+
+	/* Temporarily lock out UART receive interrupts during this
+	   read so the UART receive interrupt won't cause problems
+	   with the index values */
+	UART_IntConfig(UARTx, UART_INTCFG_RBR, DISABLE);
+
+	/* Loop until receive buffer ring is empty or
+		until max_bytes expires */
+	while ((buflen > 0) && (!(__BUF_IS_EMPTY(rb.rx_head, rb.rx_tail))))
+	{
+		/* Read data from ring buffer into user buffer */
+		*data = rb.rx[rb.rx_tail];
+		data++;
+
+		/* Update tail pointer */
+		__BUF_INCR(rb.rx_tail);
+
+		/* Increment data count and decrement buffer size count */
+		bytes++;
+		buflen--;
+	}
+
+	/* Re-enable UART interrupts */
+	UART_IntConfig(UARTx, UART_INTCFG_RBR, ENABLE);
+
+    return bytes;
+}
+#endif
 
 /**
  * @}

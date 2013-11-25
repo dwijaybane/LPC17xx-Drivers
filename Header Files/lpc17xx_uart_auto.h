@@ -5,7 +5,7 @@
 * @brief	Contains all macro definitions and function prototypes
 * 			support for UART firmware library on LPC17xx
 * @version	1.0
-* @date		24. July. 2013
+* @date		25. Nov. 2013
 * @author	Dwijay.Edutech Learning Solutions
 ***********************************************************************
 * Software that is described herein is for illustrative purposes only
@@ -53,6 +53,13 @@ extern "C"
  * @{
  */
 
+#ifndef ENABLE
+#define	ENABLE		1
+#endif
+#ifndef DISABLE
+#define DISABLE		0
+#endif
+
 /** UART time-out definitions in case of using Read() and Write function
  * with Blocking Flag mode
  */
@@ -72,11 +79,75 @@ extern "C"
 #define	In_EOL			'\r'		/* ASCII <CR>  */
 #define In_BELL         0x07        /* ASCII BELL */
 
+
+
+/******************************************************************************/
+/*                       UART Mode                                            */
+/******************************************************************************/
+#define 	POLLING_SEL       DISABLE	         // Specify the type of interface
+#define 	INTERRUPT_SEL     ENABLE
+
+/******************************************************************************/
+/*                       UART Mode validation                                 */
+/******************************************************************************/
+#if (POLLING_SEL == INTERRUPT_SEL)
+	#error uart mode not correctly defined
+#endif
+
+#if POLLING_SEL
+	#define POLLING_MODE
+#elif INTERRUPT_SEL
+	#define INTERRUPT_MODE
+#else
+	#error Uart Mode not defined
+#endif
+
+
+/******************************************************************************/
+/*                       UART Buffer Definition                               */
+/******************************************************************************/
+/* buffer size definition */
+#define UART_RING_BUFSIZE 256
+
+/* Buf mask */
+#define __BUF_MASK (UART_RING_BUFSIZE-1)
+/* Check buf is full or not */
+#define __BUF_IS_FULL(head, tail) ((tail&__BUF_MASK)==((head+1)&__BUF_MASK))
+/* Check buf will be full in next receiving or not */
+#define __BUF_WILL_FULL(head, tail) ((tail&__BUF_MASK)==((head+2)&__BUF_MASK))
+/* Check buf is empty */
+#define __BUF_IS_EMPTY(head, tail) ((head&__BUF_MASK)==(tail&__BUF_MASK))
+/* Reset buf */
+#define __BUF_RESET(bufidx)	(bufidx=0)
+#define __BUF_INCR(bufidx)	(bufidx=(bufidx+1)&__BUF_MASK)
+
+/************************** BUFFER TYPES *************************/
+
+/** @brief UART Ring buffer structure */
+typedef struct
+{
+    __IO uint32_t tx_head;                /*!< UART Tx ring buffer head index */
+    __IO uint32_t tx_tail;                /*!< UART Tx ring buffer tail index */
+    __IO uint32_t rx_head;                /*!< UART Rx ring buffer head index */
+    __IO uint32_t rx_tail;                /*!< UART Rx ring buffer tail index */
+    __IO uint8_t  tx[UART_RING_BUFSIZE];  /*!< UART Tx data ring buffer */
+    __IO uint8_t  rx[UART_RING_BUFSIZE];  /*!< UART Rx data ring buffer */
+} UART_RING_BUFFER_T;
+
+
 /*
  * Variables
  */
-unsigned int EscFlag;
+uint16 EscFlag;
 
+// UART Ring buffer
+UART_RING_BUFFER_T rb;
+
+// Current Tx Interrupt enable state
+__IO FlagStatus TxIntStat;
+
+/* Synchronous Flag */
+__IO FlagStatus Synchronous;
 /**
  * @}
  */
@@ -599,17 +670,6 @@ typedef struct {
  * @}
  */
 
-/* Public Variables ---------------------------------------------------------- */
-/** @defgroup UART_Public_Variables UART Public Variables
- * @{
- */
-
-/* Synchronous Flag */
-__IO FlagStatus Synchronous;
-
-/**
- * @}
- */
 
 /* Public Functions ----------------------------------------------------------- */
 /** @defgroup UART_Public_Functions UART Public Functions
@@ -624,10 +684,12 @@ void UART_ConfigStructInit(UART_CFG_Type *UART_InitStruct);
 /* UART Send/Receive functions -------------------------------------------------*/
 void UART_SendByte(LPC_UART_TypeDef* UARTx, uint8_t Data);
 uint8_t UART_ReceiveByte(LPC_UART_TypeDef* UARTx);
+#ifdef POLLING_MODE
 uint32_t UART_Send(LPC_UART_TypeDef *UARTx, uint8_t *txbuf,
 		uint32_t buflen, TRANSFER_BLOCK_Type flag);
 uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
 		uint32_t buflen, TRANSFER_BLOCK_Type flag);
+#endif
 
 int16 getche(LPC_UART_TypeDef *UARTx);
 uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim);
@@ -671,6 +733,14 @@ uint32_t UART_RS485SendData(LPC_UART1_TypeDef *UARTx, uint8_t *pData, uint32_t s
 void UART_IrDAInvtInputCmd(LPC_UART_TypeDef* UARTx, FunctionalState NewState);
 void UART_IrDACmd(LPC_UART_TypeDef* UARTx, FunctionalState NewState);
 void UART_IrDAPulseDivConfig(LPC_UART_TypeDef *UARTx, UART_IrDA_PULSE_Type PulseDiv);
+
+/* UART Interrupt functions--------------------------------------------------------*/
+#ifdef INTERRUPT_MODE
+uint32_t UART_Send(LPC_UART_TypeDef *UARTx, uint8_t *txbuf,
+		uint32_t buflen, TRANSFER_BLOCK_Type flag);
+uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
+		uint32_t buflen, TRANSFER_BLOCK_Type flag);
+#endif
 
 /**
  * @}
