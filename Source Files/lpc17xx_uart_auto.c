@@ -139,6 +139,35 @@ void UART2_IRQHandler(void)
 		}
 	}
 
+	intsrc &= (UART_IIR_ABEO_INT | UART_IIR_ABTO_INT);
+	// Check if End of auto-baudrate interrupt or Auto baudrate time out
+	if (intsrc)
+	{
+		// Clear interrupt pending
+		if(intsrc & UART_IIR_ABEO_INT)
+			UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABEO);
+		if (intsrc & UART_IIR_ABTO_INT)
+		    UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABTO);
+		if (Synchronous == RESET)
+		{
+			/* Interrupt caused by End of auto-baud */
+			if (intsrc & UART_AUTOBAUD_INTSTAT_ABEO)
+			{
+				// Disable AB interrupt
+				UART_IntConfig(LPC_UART2, UART_INTCFG_ABEO, DISABLE);
+				// Set Sync flag
+				Synchronous = SET;
+			}
+
+			/* Auto-Baudrate Time-Out interrupt (not implemented) */
+			if (intsrc & UART_AUTOBAUD_INTSTAT_ABTO)
+			{
+				/* Just clear this bit - Add your code here */
+				UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABTO);
+			}
+		}
+	}
+
 	// Receive Data Available or Character time-out
 	if ((tmp == UART_IIR_INTID_RDA) || (tmp == UART_IIR_INTID_CTI))
 	{
