@@ -40,6 +40,16 @@ static uint32_t converUSecToVal (uint32_t timernum, uint32_t usec);
 static uint32_t converPtrToTimeNum (LPC_TIM_TypeDef *TIMx);
 
 
+/*********************************************************************//**
+ * @brief	TIM0 interrupt handler sub-routine
+ * @param	None
+ * @return	None
+ **********************************************************************/
+void TIMER0_IRQHandler(void)
+{
+	TIM_ClearIntPending(LPC_TIM0, TIM_MR1_INT);  // clear Interrupt
+}
+
 
 /*********************************************************************//**
  * @brief	TIM1 interrupt handler sub-routine
@@ -48,15 +58,57 @@ static uint32_t converPtrToTimeNum (LPC_TIM_TypeDef *TIMx);
  **********************************************************************/
 void TIMER1_IRQHandler(void)
 {
-	TIM_Cmd(LPC_TIM1,DISABLE);                              // Disable Timer
-	TIM_ResetCounter(LPC_TIM1);                             // Reset Count
-	// Activity when MR0 interrupt occurs
-	if (TIM_GetIntStatus(LPC_TIM1, TIM_MR0_INT)== SET)
+	uint32_t current_capture_value, previous_capture_value, capture_period;
+
+	if (TIM_GetIntCaptureStatus(LPC_TIM1,0))
 	{
-		printf(LPC_UART0, "\n\rMatch interrupt occur...");
+		TIM_ClearIntCapturePending(LPC_TIM1,0);
+		// Store most recent capture value
+		current_capture_value = TIM_GetCaptureValue(LPC_TIM1,0);
+		// Calculate capture period from last two values.
+		capture_period = current_capture_value - previous_capture_value;
+		// Update previous capture value with most recent info.
+		previous_capture_value = current_capture_value;
+		printf(LPC_UART0,"\n\r%d06 Hz ",(1000000/capture_period)/100);
 	}
-	TIM_ClearIntPending(LPC_TIM1, TIM_MR0_INT);             // Clear Interrupt
-	TIM_Cmd(LPC_TIM1,ENABLE);                               // Start Timer
+}
+
+
+/*********************************************************************//**
+ * @brief	TIM2 interrupt handler sub-routine
+ * @param	None
+ * @return	None
+ **********************************************************************/
+void TIMER2_IRQHandler(void)
+{
+	TIM_ClearIntPending(LPC_TIM2, TIM_MR0_INT);  // clear Interrupt
+}
+
+
+/*********************************************************************//**
+ * @brief	TIM3 interrupt handler sub-routine
+ * @param	None
+ * @return	None
+ **********************************************************************/
+void TIMER3_IRQHandler(void)
+{
+	if (TIM_GetIntStatus(LPC_TIM3, TIM_MR0_INT)== SET)
+	{
+		TIM_Cmd(LPC_TIM3,DISABLE);                 // Disable Timer
+		TIM_ResetCounter(LPC_TIM3);
+		if(toggle_tim3 == TRUE)
+		{
+			TIM_UpdateMatchValue(LPC_TIM3,0,T1*10);//MAT3.0
+			toggle_tim3=FALSE;
+		}
+		else
+		{
+			TIM_UpdateMatchValue(LPC_TIM3,0,T2*10);
+			toggle_tim3=TRUE;
+		}
+		TIM_Cmd(LPC_TIM3,ENABLE);                // Start Timer
+	}
+	TIM_ClearIntPending(LPC_TIM3, TIM_MR0_INT);  // clear Interrupt
 }
 
 
@@ -169,7 +221,7 @@ void TIM0_Config (void)
 	TIM_ConfigStruct.PrescaleValue	= 100;
 
 	// Use channel PCfg
-	TIM_MatchConfigStruct.MatchChannel = 0;
+	TIM_MatchConfigStruct.MatchChannel = 1;
 
 	// Disable interrupt when MR0 matches the value in TC register
 	TIM_MatchConfigStruct.IntOnMatch   = TRUE;
@@ -185,6 +237,12 @@ void TIM0_Config (void)
 	// Set configuration for Tim_config and Tim_MatchConfig
 	TIM_Init(LPC_TIM0, TIM_TIMER_MODE,&TIM_ConfigStruct);
 	TIM_ConfigMatch(LPC_TIM0, &TIM_MatchConfigStruct);
+
+	/* preemption = 1, sub-priority = 1 */
+	NVIC_SetPriority(TIMER0_IRQn, 1);
+	/* Enable interrupt for timer 1 */
+	NVIC_EnableIRQ(TIMER0_IRQn);
+
 	TIM_Cmd(LPC_TIM0, ENABLE);
 }
 
@@ -196,6 +254,108 @@ void TIM0_Config (void)
 * @return 		None
 *********************************************************************/
 void TIM1_Config (void)
+{
+	// TIM Configuration structure variable
+	TIM_TIMERCFG_Type TIM_ConfigStruct;
+	// TIM Match configuration Structure variable
+	TIM_MATCHCFG_Type TIM_MatchConfigStruct;
+	// TIM Capture configuration Structure variable
+	TIM_CAPTURECFG_Type TIM_CaptureConfigStruct;
+
+	// Initialize timer, prescale count time of 1uS
+	TIM_ConfigStruct.PrescaleOption = TIM_PRESCALE_USVAL;
+	TIM_ConfigStruct.PrescaleValue	= 100;
+
+	// use channel 0, CAPn.0
+	TIM_CaptureConfigStruct.CaptureChannel = 0;
+	// Enable capture on CAPn.0 rising edge
+	TIM_CaptureConfigStruct.RisingEdge = ENABLE;
+	// Enable capture on CAPn.0 falling edge
+	TIM_CaptureConfigStruct.FallingEdge = DISABLE;
+	// Generate capture interrupt
+	TIM_CaptureConfigStruct.IntOnCaption = ENABLE;
+
+
+	// Use channel PCfg
+	TIM_MatchConfigStruct.MatchChannel = 0;
+	// Disable interrupt when MR0 matches the value in TC register
+	TIM_MatchConfigStruct.IntOnMatch   = TRUE;
+	// Enable reset on MR0: TIMER will reset if MR0 matches it
+	TIM_MatchConfigStruct.ResetOnMatch = TRUE;
+	// Stop on MR0 if MR0 matches it
+	TIM_MatchConfigStruct.StopOnMatch  = FALSE;
+	// Toggle MR0 pin if MR0 matches it
+	TIM_MatchConfigStruct.ExtMatchOutputType =TIM_EXTMATCH_TOGGLE;
+	// Set Match value, count value of 1000 (1000 * 100uS = 100mS --> 10Hz)
+	TIM_MatchConfigStruct.MatchValue   = 1000;
+
+
+	// Set configuration for Tim_config and Tim_MatchConfig
+	TIM_Init(LPC_TIM1, TIM_TIMER_MODE,&TIM_ConfigStruct);
+//	TIM_ConfigMatch(LPC_TIM1, &TIM_MatchConfigStruct);
+	TIM_ConfigCapture(LPC_TIM1, &TIM_CaptureConfigStruct);
+	TIM_ResetCounter(LPC_TIM1);
+
+	/* preemption = 1, sub-priority = 1 */
+	NVIC_SetPriority(TIMER1_IRQn, 1);
+	/* Enable interrupt for timer 1 */
+	NVIC_EnableIRQ(TIMER1_IRQn);
+
+	TIM_Cmd(LPC_TIM1, ENABLE);
+}
+
+
+/********************************************************************//**
+* @brief		Configures the TIM2 peripheral according to the specified
+*               parameters.
+* @param[in]	None
+* @return 		None
+*********************************************************************/
+void TIM2_Config (void)
+{
+	// TIM Configuration structure variable
+	TIM_TIMERCFG_Type TIM_ConfigStruct;
+	// TIM Match configuration Structure variable
+	TIM_MATCHCFG_Type TIM_MatchConfigStruct;
+
+	// Initialize timer, prescale count time of 100uS
+	TIM_ConfigStruct.PrescaleOption = TIM_PRESCALE_USVAL;
+	TIM_ConfigStruct.PrescaleValue	= 1;
+
+	// Use channel PCfg
+	TIM_MatchConfigStruct.MatchChannel = 0;
+
+	// Disable interrupt when MR0 matches the value in TC register
+	TIM_MatchConfigStruct.IntOnMatch   = FALSE;
+	// Enable reset on MR0: TIMER will reset if MR0 matches it
+	TIM_MatchConfigStruct.ResetOnMatch = TRUE;
+	// Stop on MR0 if MR0 matches it
+	TIM_MatchConfigStruct.StopOnMatch  = FALSE;
+	// Toggle MR0 pin if MR0 matches it
+	TIM_MatchConfigStruct.ExtMatchOutputType =TIM_EXTMATCH_TOGGLE;
+	// Set Match value, count value of 1000 (1000 * 100uS = 100mS --> 10Hz)
+	TIM_MatchConfigStruct.MatchValue   = 500000/150;
+
+	// Set configuration for Tim_config and Tim_MatchConfig
+	TIM_Init(LPC_TIM2, TIM_TIMER_MODE,&TIM_ConfigStruct);
+	TIM_ConfigMatch(LPC_TIM2, &TIM_MatchConfigStruct);
+
+	/* preemption = 1, sub-priority = 1 */
+//	NVIC_SetPriority(TIMER2_IRQn, 1);
+	/* Enable interrupt for timer 2 */
+//	NVIC_EnableIRQ(TIMER2_IRQn);
+
+	TIM_Cmd(LPC_TIM2, ENABLE);
+}
+
+
+/********************************************************************//**
+* @brief		Configures the TIM3 peripheral according to the specified
+*               parameters.
+* @param[in]	None
+* @return 		None
+*********************************************************************/
+void TIM3_Config (void)
 {
 	// TIM Configuration structure variable
 	TIM_TIMERCFG_Type TIM_ConfigStruct;
@@ -216,20 +376,20 @@ void TIM1_Config (void)
 	// Stop on MR0 if MR0 matches it
 	TIM_MatchConfigStruct.StopOnMatch  = FALSE;
 	// Toggle MR0 pin if MR0 matches it
-	TIM_MatchConfigStruct.ExtMatchOutputType =TIM_EXTMATCH_NOTHING;
-	// Set Match value, count value of 10000 (10000 * 100uS = 1000mS --> 1Hz)
-	TIM_MatchConfigStruct.MatchValue   = 10000;
+	TIM_MatchConfigStruct.ExtMatchOutputType =TIM_EXTMATCH_TOGGLE;
+	// Set Match value, count value of 1000 (1000 * 100uS = 100mS --> 10Hz)
+	TIM_MatchConfigStruct.MatchValue   = T1*10;
 
 	// Set configuration for Tim_config and Tim_MatchConfig
-	TIM_Init(LPC_TIM1, TIM_TIMER_MODE,&TIM_ConfigStruct);
-	TIM_ConfigMatch(LPC_TIM1, &TIM_MatchConfigStruct);
+	TIM_Init(LPC_TIM3, TIM_TIMER_MODE,&TIM_ConfigStruct);
+	TIM_ConfigMatch(LPC_TIM3, &TIM_MatchConfigStruct);
 
 	/* preemption = 1, sub-priority = 1 */
-	NVIC_SetPriority(TIMER1_IRQn, 1);
-	/* Enable interrupt for timer 1 */
-	NVIC_EnableIRQ(TIMER1_IRQn);
+	NVIC_SetPriority(TIMER3_IRQn, 1);
+	/* Enable interrupt for timer 3 */
+	NVIC_EnableIRQ(TIMER3_IRQn);
 
-	TIM_Cmd(LPC_TIM1, ENABLE);
+	TIM_Cmd(LPC_TIM3, ENABLE);
 }
 
 
@@ -258,7 +418,28 @@ void TIM_Config(LPC_TIM_TypeDef *TIMx, TIM_PCFG_TYPE PCfg)
 
 	if (TIMx == LPC_TIM0)
 	{
-		//Pin Configuration
+		switch (PCfg)
+		{
+		 case TIM_MR1:
+			 // Configure P3.26 as MAT0.1
+			 PinCfg.Funcnum = 2;
+			 PinCfg.OpenDrain = 0;
+			 PinCfg.Pinmode = 0;
+			 PinCfg.Portnum = 3;
+			 PinCfg.Pinnum = 26;
+			 PINSEL_ConfigPin(&PinCfg);
+			 break;
+
+		 case None:
+			 break;
+
+		 default:
+		 		//Error match value
+		 		//Error loop
+		 		while(1);
+		}
+
+		// Pin Configuration
 		TIM0_Config();    // Timer0 Configuration
 	}
 	else if (TIMx == LPC_TIM1)
@@ -318,13 +499,65 @@ void TIM_Config(LPC_TIM_TypeDef *TIMx, TIM_PCFG_TYPE PCfg)
 	}
 	else if (TIMx == LPC_TIM2)
 	{
-		//Pin Configuration
-		//TIM2_Config();    // Timer2 Configuration
+		switch (PCfg)
+		{
+		 case TIM_MR0:
+			 // Configure P4.28 as MAT2.0
+			 PinCfg.Funcnum = 2;
+			 PinCfg.OpenDrain = 0;
+			 PinCfg.Pinmode = 0;
+			 PinCfg.Portnum = 4;
+			 PinCfg.Pinnum = 28;
+			 PINSEL_ConfigPin(&PinCfg);
+			 break;
+
+		 case None:
+			 break;
+
+		 default:
+		 		//Error match value
+		 		//Error loop
+		 		while(1);
+		}
+
+		// Pin Configuration
+		TIM2_Config();    // Timer2 Configuration
 	}
 	else if (TIMx == LPC_TIM3)
 	{
-		//Pin Configuration
-		//TIM3_Config();    // Timer3 Configuration
+		switch (PCfg)
+		{
+		 case TIM_MR0:
+			 // Configure P0.10 as MAT3.0
+			 PinCfg.Funcnum = 3;
+			 PinCfg.OpenDrain = 0;
+			 PinCfg.Pinmode = 0;
+			 PinCfg.Portnum = 0;
+			 PinCfg.Pinnum = 10;
+			 PINSEL_ConfigPin(&PinCfg);
+			 break;
+
+		 case TIM_MR1:
+			 // Configure P0.11 as MAT3.1
+			 PinCfg.Funcnum = 3;
+			 PinCfg.OpenDrain = 0;
+			 PinCfg.Pinmode = 0;
+			 PinCfg.Portnum = 0;
+			 PinCfg.Pinnum = 11;
+			 PINSEL_ConfigPin(&PinCfg);
+			 break;
+
+		 case None:
+			 break;
+
+		 default:
+		 		//Error match value
+		 		//Error loop
+		 		while(1);
+		}
+
+		// Pin Configuration
+		TIM3_Config();    // Timer3 Configuration
 	}
 }
 
