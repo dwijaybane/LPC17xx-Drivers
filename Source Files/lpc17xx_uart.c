@@ -395,7 +395,7 @@ void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 	else if(UARTx == LPC_UART2)
 	{
 		/* preemption = 1, sub-priority = 1 */
-		NVIC_SetPriority(UART2_IRQn, ((0x01<<3)|0x01));
+		NVIC_SetPriority(UART2_IRQn, 2);
 		/* Enable Interrupt for UART2 channel */
 		NVIC_EnableIRQ(UART2_IRQn);
 	}
@@ -1042,8 +1042,8 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 {
 	uchar hex[]= "0123456789ABCDEF";
-	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000 };
-	unsigned int width_hex[4] = { 0x1, 0x10, 0x100, 0x1000,};
+	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000};
+	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000, 0x10000, 0x100000, 0x1000000};
 	unsigned int temp;
 
 	schar format_flag, fill_char;
@@ -1097,7 +1097,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 			case 'u':
 				base = 16;
 				div_val = 0x100000;
-				u_val = va_arg(ap, ulong32);
+				u_val = va_arg(ap, uint32_t);
 				do
 				{
 					UART_Send(UARTx,&(hex[u_val/div_val]),1,BLOCKING);
