@@ -58,18 +58,23 @@ void TIMER0_IRQHandler(void)
  **********************************************************************/
 void TIMER1_IRQHandler(void)
 {
-	uint32_t current_capture_value, previous_capture_value, capture_period;
-
 	if (TIM_GetIntCaptureStatus(LPC_TIM1,0))
 	{
 		TIM_ClearIntCapturePending(LPC_TIM1,0);
-		// Store most recent capture value
-		current_capture_value = TIM_GetCaptureValue(LPC_TIM1,0);
-		// Calculate capture period from last two values.
-		capture_period = current_capture_value - previous_capture_value;
-		// Update previous capture value with most recent info.
-		previous_capture_value = current_capture_value;
-		printf(LPC_UART0,"\n\r%d06 Hz ",(1000000/capture_period)/100);
+		if(first_capture==TRUE)
+		{
+			TIM_Cmd(LPC_TIM1,DISABLE);
+			TIM_ResetCounter(LPC_TIM1);
+			TIM_Cmd(LPC_TIM1,ENABLE);
+			count++;
+			if(count==20)first_capture=FALSE; //stable
+		}
+		else
+		{
+			count=0; //reset count for next use
+			done=TRUE;
+			capture = TIM_GetCaptureValue(LPC_TIM1,0);
+		}
 	}
 }
 
@@ -262,7 +267,7 @@ void TIM1_Config (void)
 	// TIM Capture configuration Structure variable
 	TIM_CAPTURECFG_Type TIM_CaptureConfigStruct;
 
-	// Initialize timer, prescale count time of 1uS
+	// Initialize timer, prescale count time of 1mS
 	TIM_ConfigStruct.PrescaleOption = TIM_PRESCALE_USVAL;
 	TIM_ConfigStruct.PrescaleValue	= 100;
 
@@ -334,7 +339,7 @@ void TIM2_Config (void)
 	// Toggle MR0 pin if MR0 matches it
 	TIM_MatchConfigStruct.ExtMatchOutputType =TIM_EXTMATCH_TOGGLE;
 	// Set Match value, count value of 1000 (1000 * 100uS = 100mS --> 10Hz)
-	TIM_MatchConfigStruct.MatchValue   = 500000/150;
+	TIM_MatchConfigStruct.MatchValue   = (500000/820);
 
 	// Set configuration for Tim_config and Tim_MatchConfig
 	TIM_Init(LPC_TIM2, TIM_TIMER_MODE,&TIM_ConfigStruct);

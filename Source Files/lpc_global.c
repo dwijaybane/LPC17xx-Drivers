@@ -32,20 +32,41 @@
  * otherwise the default FW library configuration file must be included instead
  */
 
-/** @addtogroup GLOBAL_Constants
- * @{
- */
-
-/**
- * @}
- */
-
 /** @addtogroup GLOBAL_Variables
  * @{
  */
 
-// systick
+/**
+ *   Systick
+ */
 uint32_t led_delay;
+uchar status = 0;
+
+/**
+ *   Lcd Custom Patterns
+ */
+//uchar Character1[8] = {0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x00};
+
+/**
+ *  Stepper Motor
+ */
+uchar SmAntClk[4]= {0x80,0x08,0x20,0x02};
+uchar SmClk[4]= {0x02,0x20,0x08,0x80};
+uchar temp =0;
+
+/**
+ *  Timer3
+ */
+uint32_t T1=300;    // Off Time
+uint32_t T2=1000;   // On Time
+BOOL_8 toggle_tim3=TRUE;
+
+/**
+ *  Timer1
+ */
+BOOL_8 first_capture,done;
+uint32_t capture;
+uint8_t count=0;
 
 /**
  * @}
