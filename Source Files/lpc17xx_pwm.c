@@ -25,14 +25,47 @@
  */
 
 /* Includes ------------------------------------------------------------------- */
+#include "lpc_system_init.h"
 #include "lpc17xx_pwm.h"
-#include "lpc17xx_clkpwr.h"
-#include "lpc17xx_pinsel.h"
 
 /* If this source file built with example, the LPC17xx FW library configuration
  * file in each example directory ("lpc17xx_libcfg.h") must be included,
  * otherwise the default FW library configuration file must be included instead
  */
+
+
+/*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
+/*********************************************************************//**
+ * @brief		PWM1 interrupt handler sub-routine
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void PWM1_IRQHandler(void)
+{
+	/* Check whether if match flag for channel 0 is set or not */
+	if (PWM_GetIntStatus(LPC_PWM1, PWM_INTSTAT_MR0))
+	{
+		match_cnt++;
+		/* Clear the interrupt flag */
+
+		if (match_cnt >= 0x1000)
+		{
+			match_cnt = 0;
+			long_duty++;
+			if (long_duty >= 256)
+			{
+				// Reset duty
+				long_duty = 0;
+				// Print info
+		//		printf(LPC_UART0,"PWM1.1 is reset!");
+			}
+			// Update PWM1.1 duty
+			PWM_MatchUpdate(LPC_PWM1, 1, long_duty, PWM_MATCH_UPDATE_NOW);
+		}
+
+		PWM_ClearIntPending(LPC_PWM1, PWM_INTSTAT_MR0);
+	}
+}
 
 
 /* Public Functions ----------------------------------------------------------- */
@@ -84,7 +117,7 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 /* PWM Timer/Counter will be reset when channel 0 matching
 			  * no interrupt when match
 			  * no stop when match */
-			 PWMMatchCfgDat.IntOnMatch = DISABLE;
+			 PWMMatchCfgDat.IntOnMatch = ENABLE;
 			 PWMMatchCfgDat.MatchChannel = 0;
 			 PWMMatchCfgDat.ResetOnMatch = ENABLE;
 			 PWMMatchCfgDat.StopOnMatch = DISABLE;
@@ -101,7 +134,7 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMCfgDat.PrescaleValue = 1;
 
 			 /* Set up match value */
-			 PWM_MatchUpdate(LPC_PWM1, 1, 10, PWM_MATCH_UPDATE_NOW);
+			 PWM_MatchUpdate(LPC_PWM1, 1, 20, PWM_MATCH_UPDATE_NOW);
 			 /* Configure match option */
 			 PWMMatchCfgDat.IntOnMatch = DISABLE;
 			 PWMMatchCfgDat.MatchChannel = 1;
@@ -109,7 +142,7 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMMatchCfgDat.StopOnMatch = DISABLE;
 			 PWM_ConfigMatch(LPC_PWM1, &PWMMatchCfgDat);
 			 /* Enable PWM Channel Output */
-			 PWM_ChannelCmd(LPC_PWM1, 1, ENABLE);
+			 PWM_ChannelCmd(LPC_PWM1, 1, ENABLE);       // Comment in case of dual edge PWM
 			 break;
 
 
@@ -121,7 +154,8 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMCfgDat.PrescaleOption = PWM_TIMER_PRESCALE_TICKVAL;
 			 PWMCfgDat.PrescaleValue = 1;
 
-			 PWM_ChannelConfig(LPC_PWM1, 2, PWM_CHANNEL_SINGLE_EDGE);
+			 PWM_ChannelConfig(LPC_PWM1, 2, PWM_CHANNEL_SINGLE_EDGE);  // Comment in case of dual edge PWM
+		//	 PWM_ChannelConfig(LPC_PWM1, 2, PWM_CHANNEL_DUAL_EDGE);  // Comment in case of single edge PWM
 
 			 /* Set up match value */
 			 PWM_MatchUpdate(LPC_PWM1, 2, 20, PWM_MATCH_UPDATE_NOW);
@@ -144,6 +178,8 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMCfgDat.PrescaleOption = PWM_TIMER_PRESCALE_TICKVAL;
 			 PWMCfgDat.PrescaleValue = 1;
 
+			 PWM_ChannelConfig(LPC_PWM1, 3, PWM_CHANNEL_SINGLE_EDGE);  // Comment in case of dual edge PWM
+
 			 /* Set up match value */
 			 PWM_MatchUpdate(LPC_PWM1, 3, 30, PWM_MATCH_UPDATE_NOW);
 			 /* Configure match option */
@@ -153,7 +189,7 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMMatchCfgDat.StopOnMatch = DISABLE;
 			 PWM_ConfigMatch(LPC_PWM1, &PWMMatchCfgDat);
 			 /* Enable PWM Channel Output */
-			 PWM_ChannelCmd(LPC_PWM1, 3, ENABLE);
+			 PWM_ChannelCmd(LPC_PWM1, 3, ENABLE);         // Comment in case of dual edge PWM
 			 break;
 
 
@@ -164,6 +200,9 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 
 			 PWMCfgDat.PrescaleOption = PWM_TIMER_PRESCALE_TICKVAL;
 			 PWMCfgDat.PrescaleValue = 1;
+
+			 PWM_ChannelConfig(LPC_PWM1, 4, PWM_CHANNEL_SINGLE_EDGE);  // Comment in case of dual edge PWM
+	//		 PWM_ChannelConfig(LPC_PWM1, 4, PWM_CHANNEL_DUAL_EDGE);  // Comment in case of single edge PWM
 
 			 /* Set up match value */
 			 PWM_MatchUpdate(LPC_PWM1, 4, 40, PWM_MATCH_UPDATE_NOW);
@@ -186,6 +225,8 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMCfgDat.PrescaleOption = PWM_TIMER_PRESCALE_TICKVAL;
 			 PWMCfgDat.PrescaleValue = 1;
 
+			 PWM_ChannelConfig(LPC_PWM1, 5, PWM_CHANNEL_SINGLE_EDGE); // Comment in case of dual edge PWM
+
 			 /* Set up match value */
 			 PWM_MatchUpdate(LPC_PWM1, 5, 50, PWM_MATCH_UPDATE_NOW);
 			 /* Configure match option */
@@ -195,7 +236,7 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 			 PWMMatchCfgDat.StopOnMatch = DISABLE;
 			 PWM_ConfigMatch(LPC_PWM1, &PWMMatchCfgDat);
 			 /* Enable PWM Channel Output */
-			 PWM_ChannelCmd(LPC_PWM1, 5, ENABLE);
+			 PWM_ChannelCmd(LPC_PWM1, 5, ENABLE);        // Comment in case of dual edge PWM
 			 break;
 
 
@@ -206,6 +247,9 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 
 			 PWMCfgDat.PrescaleOption = PWM_TIMER_PRESCALE_TICKVAL;
 			 PWMCfgDat.PrescaleValue = 1;
+
+			 PWM_ChannelConfig(LPC_PWM1, 6, PWM_CHANNEL_SINGLE_EDGE); // Comment in case of dual edge PWM
+	//		 PWM_ChannelConfig(LPC_PWM1, 6, PWM_CHANNEL_DUAL_EDGE);  // Comment in case of single edge PWM
 
 			 /* Set up match value */
 			 PWM_MatchUpdate(LPC_PWM1, 6, 60, PWM_MATCH_UPDATE_NOW);
@@ -253,6 +297,15 @@ void PWM_Config(LPC_PWM_TypeDef *PWMx, PWM_PCFG_TYPE PCfg)
 		 		while(1);
 		}
 	}
+
+	/* Setting interrupt for PWM ---------------------------------------------- */
+	/* Disable PWM interrupt */
+	NVIC_DisableIRQ(PWM1_IRQn);
+	/* preemption = 1, sub-priority = 1 */
+	NVIC_SetPriority(PWM1_IRQn, 3);
+
+	/* Enable PWM interrupt */
+	NVIC_EnableIRQ(PWM1_IRQn);
 
 	/* Reset and Start counter */
 	PWM_ResetCounter(PWMx);
