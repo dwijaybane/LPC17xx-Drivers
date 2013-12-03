@@ -79,7 +79,7 @@ void MCPWM_Config (void)
 	/* Init MCPWM peripheral */
 	MCPWM_Init(LPC_MCPWM);
 	/* MCPWM Channel Config */
-	MCPWM_Channel_Config(LPC_MCPWM, MCPWM_MR0, MCPWM_DC, MCPWM_INT_DISABLE);
+	MCPWM_Channel_Config(LPC_MCPWM, MCPWM_MR0, None, MCPWM_INT_DISABLE);
 	//MCPWM_Channel_Config(LPC_MCPWM, MCPWM_CR0, None, MCPWM_INT_ENABLE);
 	/*Start PWM Channels */
 	MCPWM_Start(LPC_MCPWM, ENABLE, DISABLE, DISABLE);
@@ -120,13 +120,13 @@ void MCPWM_Channel_Config(LPC_MCPWM_TypeDef *MCPWMx, MCPWM_PCFG_TYPE PCfg, MCPWM
 			 PINSEL_ConfigPin(&PinCfg);
 
 			 channelsetup.channelType = MCPWM_CHANNEL_EDGE_MODE;
-			 channelsetup.channelPolarity = MCPWM_CHANNEL_PASSIVE_LO;
-			 channelsetup.channelDeadtimeEnable = DISABLE;
-			 channelsetup.channelDeadtimeValue = 0;
+			 channelsetup.channelPolarity = MCPWM_CHANNEL_PASSIVE_HI;
+			 channelsetup.channelDeadtimeEnable = ENABLE;
+			 channelsetup.channelDeadtimeValue = 50;
 			 channelsetup.channelUpdateEnable = ENABLE;
 			 channelsetup.channelTimercounterValue = 0;
-			 channelsetup.channelPeriodValue = 300;
-			 channelsetup.channelPulsewidthValue = 100;
+			 channelsetup.channelPeriodValue = 500000;
+			 channelsetup.channelPulsewidthValue = 300000;
 
 			 MCPWM_ConfigChannel(MCPWMx, 0, &channelsetup);
 			 break;
