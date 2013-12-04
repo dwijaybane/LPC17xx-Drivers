@@ -41,6 +41,7 @@
 #include "lpc17xx_nvic.h"
 #include "lpc17xx_pinsel.h"
 #include "stdarg.h"
+#include "lpc17xx_rtc.h"
 
 
 #ifdef __cplusplus
@@ -80,12 +81,12 @@ extern "C"
 #define In_BELL         0x07        /* ASCII BELL */
 
 
-
 /******************************************************************************/
 /*                       UART Mode                                            */
 /******************************************************************************/
 #define 	POLLING_SEL       DISABLE	         // Specify the type of interface
 #define 	INTERRUPT_SEL     ENABLE
+#define     RTC_SUPPORT       ENABLE
 
 /******************************************************************************/
 /*                       UART Mode validation                                 */
@@ -100,6 +101,9 @@ extern "C"
 	#define INTERRUPT_MODE
 #else
 	#error Uart Mode not defined
+#endif
+#if RTC_SUPPORT
+	#define RTC_MODE
 #endif
 
 
@@ -738,6 +742,18 @@ uint32_t UART_Send(LPC_UART_TypeDef *UARTx, uint8_t *txbuf,
 uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
 		uint32_t buflen, TRANSFER_BLOCK_Type flag);
 #endif
+
+/* UART VT100 Terminal functions--------------------------------------------------------*/
+void reset_cursor (LPC_UART_TypeDef *UARTx);
+void clear_screen (LPC_UART_TypeDef *UARTx);
+void clr_scr_rst_cur (LPC_UART_TypeDef *UARTx);
+void Erase_Char (LPC_UART_TypeDef *UARTx);
+void Erase_Char_With_UnderScore (LPC_UART_TypeDef *UARTx);
+void Erase_BackLash (LPC_UART_TypeDef *UARTx);
+void Erase_SemiColon (LPC_UART_TypeDef *UARTx);
+void Erase_And_RingTheBell (LPC_UART_TypeDef *UARTx);
+
+
 
 /**
  * @}

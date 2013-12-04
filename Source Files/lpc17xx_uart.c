@@ -1017,6 +1017,7 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 	return(count);
 }
 
+
 /*********************************************************************//**
  * @brief		Modified version of Standard Printf statement
  *
@@ -1025,9 +1026,14 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
  *		        f supplies a fill character
  *		        n supplies a field width
  *
- *				Supports custom formats  "%b  %u"
+ *		        ENABLE RTC_SUPPORT in lpc17xx_uart.h for RTC Features
+ *
+ *				Supports custom formats  "%b  %u %t %y %a"
  *				"%b"	prints a 2 digit BCD value with leading zero
  *				"%u"	prints the 16 bit unsigned integer in hex format
+ *				"%t"    prints current time
+ *				"%y"    prints current date
+ *				"%a"    prints alarm time and date
  * @param[in]	UARTx	Selected UART peripheral used to send data,
  * 				should be:
  *  			- LPC_UART0: UART0 peripheral
@@ -1051,6 +1057,9 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 	uint16 base;
 
 	schar *ptr;
+#ifdef RTC_MODE
+	RTC_TIME_Type FullTime;
+#endif
 	va_list ap;
 	va_start(ap, format);
 
@@ -1093,7 +1102,26 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 				}
 
 				continue;
+#ifdef RTC_MODE
+			case 't':
+				RTC_GetFullTime (LPC_RTC, &FullTime);
+			    printf(UARTx, "%d02:%d02:%d02",FullTime.HOUR,FullTime.MIN,FullTime.SEC);
 
+				continue;
+
+			case 'y':
+				RTC_GetFullTime (LPC_RTC, &FullTime);
+			    printf(UARTx, "%d02/%d02/%d04",FullTime.DOM,FullTime.MONTH,FullTime.YEAR);
+
+				continue;
+
+			case 'a':
+				RTC_GetFullAlarmTime (LPC_RTC, &FullTime);
+				printf(UARTx, "Time: %d02:%d02:%d02",FullTime.HOUR,FullTime.MIN,FullTime.SEC);
+				printf(UARTx, "  Date: %d02/%d02/%d04",FullTime.DOM,FullTime.MONTH,FullTime.YEAR);
+
+				continue;
+#endif
 			case 'u':
 				base = 16;
 				div_val = 0x100000;
@@ -2099,6 +2127,155 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, uint32_t buflen, 
     return bytes;
 }
 #endif
+
+
+/********************************************************************//**
+ * @brief		VT100- code to set cursor to Home
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void reset_cursor (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx,"\x1b[H");   /* escape sequence for vt220 ^[H sets cursor to Home */
+}
+
+
+/********************************************************************//**
+ * @brief		VT100- code to Clear Screen
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void clear_screen (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx,"\x1b[2J");   /* escape sequence for vt220 ESC[2J clears screen */
+}
+
+
+/********************************************************************//**
+ * @brief		VT100- code to Clear Screen and Reset Cursor
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void clr_scr_rst_cur (LPC_UART_TypeDef *UARTx)
+{
+	clear_screen(UARTx);
+	reset_cursor(UARTx);
+}
+
+
+/********************************************************************//**
+ * @brief		Erase Character
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void Erase_Char (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx, "%c", Out_BACKSPACE);
+	printf(UARTx, "%c", Out_SPACE);
+	printf(UARTx, "%c", Out_BACKSPACE);
+}
+
+
+/********************************************************************//**
+ * @brief		Erase Character with Underscore '_'
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void Erase_Char_With_UnderScore (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "_");                   /* and write '_' on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+}
+
+
+/********************************************************************//**
+ * @brief		Erase BackLash
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void Erase_BackLash (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "/");                   /* and write '/' on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "_");                   /* and write '_' on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+}
+
+
+/********************************************************************//**
+ * @brief		Erase Semicolon
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void Erase_SemiColon (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, ":");                   /* and write ':' on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+	printf(UARTx, "_");                   /* and write '_' on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);       /* erase character on the screen */
+}
+
+
+/********************************************************************//**
+ * @brief		Erase and Ring the Bell
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *   			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @return 		None
+ *********************************************************************/
+void Erase_And_RingTheBell (LPC_UART_TypeDef *UARTx)
+{
+	printf(UARTx, "%c", Out_BACKSPACE);         /* back space */
+	printf(UARTx, "_");                   /* erase 1st char on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);         /* back space */
+	printf(UARTx, "_");                   /* erase 2nd char on the screen */
+	printf(UARTx, "%c", Out_BACKSPACE);         /* back space */
+	printf(UARTx, "\7");                  /* ring the bell */
+}
+
 
 /**
  * @}
