@@ -266,6 +266,7 @@ typedef enum {
 
 void RTC_Config (void);
 uchar Change_Time (void);
+uchar Change_Date (void);
 
 void RTC_Init (LPC_RTC_TypeDef *RTCx);
 void RTC_DeInit(LPC_RTC_TypeDef *RTCx);

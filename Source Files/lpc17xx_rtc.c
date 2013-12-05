@@ -48,22 +48,21 @@ void RTC_IRQHandler(void)
 	if (RTC_GetIntPending(LPC_RTC, RTC_INT_COUNTER_INCREASE))
 	{
 		/* Send debug information */
-		printf(LPC_UART0,"\x1b[4;1HSeconds Timer Interrupt executed");
+		printf(LPC_UART0,"\x1b[2;1HSecond: %d02",RTC_GetTime (LPC_RTC, RTC_TIMETYPE_SECOND));
 
 		// Clear pending interrupt
 		RTC_ClearIntPending(LPC_RTC, RTC_INT_COUNTER_INCREASE);
-		RTC_CntIncrIntConfig (LPC_RTC, RTC_TIMETYPE_SECOND, DISABLE);
 	}
-
-	/* check the Alarm match*/
+	/* check the Alarm match
 	if (RTC_GetIntPending(LPC_RTC, RTC_INT_ALARM))
 	{
-		/* Send debug information */
+		// Send debug information
 		printf(LPC_UART0,"\n\rALARM 10s matched!");
 
 		// Clear pending interrupt
 		RTC_ClearIntPending(LPC_RTC, RTC_INT_ALARM);
-	}
+	}*/
+
 }
 
 
@@ -104,7 +103,16 @@ void RTC_Config (void)
 	RTC_SetTime (LPC_RTC, RTC_TIMETYPE_DAYOFMONTH, 4);
 
 	/* Set ALARM time for second */
-	RTC_SetAlarmTime (LPC_RTC, RTC_TIMETYPE_SECOND, 10);
+//	RTC_SetAlarmTime (LPC_RTC, RTC_TIMETYPE_SECOND, 10);
+
+	/* Setting Timer calibration
+	 * Calibration value =  5s;
+	 * Direction = Forward calibration
+	 * So after each 5s, calibration logic can periodically adjust the time counter by
+	 * incrementing the counter by 2 instead of 1
+	 */
+//	RTC_CalibConfig(LPC_RTC, 5, RTC_CALIB_DIR_FORWARD);
+//	RTC_CalibCounterCmd(LPC_RTC, ENABLE);
 
 	/* Set the CIIR for second counter interrupt*/
 //	RTC_CntIncrIntConfig (LPC_RTC, RTC_TIMETYPE_SECOND, ENABLE);
@@ -112,7 +120,7 @@ void RTC_Config (void)
 //	RTC_AlarmIntConfig (LPC_RTC, RTC_TIMETYPE_SECOND, ENABLE);
 
     /* Enable RTC interrupt */
-//    NVIC_EnableIRQ(RTC_IRQn);
+    NVIC_EnableIRQ(RTC_IRQn);
 }
 
 
@@ -325,6 +333,317 @@ uchar Change_Time (void)
 	}
 	return(0);
 }
+
+
+/********************************************************************//**
+ * @brief		Check if year is leap year or not
+ * @param[in]	None
+ * @return 		status
+ *********************************************************************/
+BOOL_8 Is_Leap_Year(uchar Year, uchar Century)
+{
+  /* If year not a multiple of 4 then not a leap year */
+  if( (Year % 4) != 0) return NO;
+
+  /* If year a multiple of 4 and non zero then is a leap year */
+  if(Year != 0) return YES;
+
+  /* Must check the century is a multiple of 4 also */
+  return ((Century % 4) == 0);
+}
+
+
+/********************************************************************//**
+ * @brief		Change RTC Date
+ * @param[in]	None
+ * @return 		status
+ *********************************************************************/
+uchar Change_Date (void)
+{
+	char DateBuffer[3];
+	uint16_t Year[1];
+	char cp;                            /* input from keyboard */
+	char RTCdata;                       /* buffer */
+	uchar DateFlag=0;                    /* flag for date data is available */
+	uchar count = 0;                     /* input character counter */
+	uchar State = 0;                     /* state for dd=1, mm=2, ccyy=3 */
+
+	uchar digit = 0;                     /* indication for 1st, 2nd, 3rd and 4th digit */
+                                       /* for dd, mm, yycc */
+	uchar MaxCount = 8;                  /* maximum no. of digits */
+	char AsciiLSB;                      /* temp storage for LSB ascii input */
+	char AsciiMSB;                      /* temp storage for MSB ascii input */
+	uchar DaysThisMonth;                 /* number of days for the given month */
+
+    while(1)
+    {
+    	cp = getche(LPC_UART0);                   /* get input character */
+
+    	if(cp == In_ESC)                 /* if ESCAPE pressed then exit */
+    	{
+    		return (cp);
+    	}
+    	else if (cp == In_CR)          /* CARRIAGE RETURN ? */
+    	{
+    		if(count==0)                   /* any characters at all ? */
+    		{
+    			continue;                    /* no, so get another character */
+    		}
+
+    		if(DateFlag==1)
+    		{   /*  update real time clock  */
+    			/* Read RTC */
+    			Year[0] = ((DateBuffer[2] & 0xFF) * 100);
+    			Year[0] += (DateBuffer[3] & 0xFF);
+    			RTC_SetTime (LPC_RTC, RTC_TIMETYPE_DAYOFMONTH, DateBuffer[0]);
+    			RTC_SetTime (LPC_RTC, RTC_TIMETYPE_MONTH, DateBuffer[1]);
+    			RTC_SetTime (LPC_RTC, RTC_TIMETYPE_YEAR, Year[0]);
+    			return(0);
+    		}
+    		else
+    		{
+    			break;                       /* check for any character */
+    		}
+    	}
+    	else if (cp == In_DELETE || cp == In_BACKSPACE) /* delete or back space */
+    	{
+    		if(count==0)                   /* any characters entered */
+    		{
+    			continue;                    /* no, so get another character */
+    		}
+
+    		if(State == 2)                 /* State 2 cointains 4 digits */
+    		{
+    			if(digit == 0)
+    			{
+    				Erase_BackLash(LPC_UART0);
+    			    digit = 1;                 /* now its point to 2nd digit of month */
+    				State--;                   /* point to month's state */
+    				count--;                   /* decrement character count */
+
+    				continue;
+    			}
+    			else
+    			{
+    				Erase_Char_With_UnderScore(LPC_UART0);
+    				digit--;                     /* point to 2nd digit */
+    				count--;                     /* decrement count */
+
+    				continue;                    /* goback and get another input */
+    			}
+    		}
+    		else
+    		{
+    			if(digit ==0)
+    			{
+    				Erase_BackLash(LPC_UART0);
+    				State--;                     /* point to month's state */
+    				digit = 1;                   /* now its point to 2nd digit of month */
+    				count--;                     /* decrement character count */
+
+    				continue;
+    			}
+    			else
+    			{
+    				Erase_Char_With_UnderScore(LPC_UART0);
+    				digit = 0;                   /* point to 1st digit */
+    				count--;                     /* decrement count */
+
+    				continue;                    /* goback and get another input */
+    			}
+    		}
+    	}
+    	else if (cp>= '0' && cp <='9')     /* is character between 0 to 9? */
+    	{
+    		RTCdata = cp;
+
+    		/****** check date ****/
+    		if(count < MaxCount)
+    		{
+    			if(State == 0)
+    			{
+    				if(digit==0)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);          /* echo 1st character */
+    					AsciiMSB = RTCdata;        /* store 1st byte MSB  */
+    					count++;                   /* increment character count,will be 1 */
+    					digit++;                   /* increment digit, will be 1 */
+
+    					continue;
+    				}
+    				else
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);                   /* echo 2nd character */
+    					AsciiLSB = RTCdata;                 /* store 2nd byte LSB  */
+    					RTCdata = ((AsciiMSB & 0x0F) * 10); /* store nibble */
+    					RTCdata += (AsciiLSB & 0x0F);       /* add to nibble, integer */
+
+    					if(RTCdata >= 1 && RTCdata <=31)    /* check date range ( 1-31) */
+    					{
+    						DateBuffer[0] = RTCdata; /* store DOM in DateBuffer[0] */
+
+    						State++;                 /* increment to mm state */
+    						count++;                 /* increment character count,will be 2 */
+    						digit = 0;               /* set digit to zero  */
+    						printf(LPC_UART0, "/");            /* and write '/' on the screen */
+
+    						continue;                /* continue for minutes */
+    					}
+    					else
+    					{
+    						Erase_And_RingTheBell(LPC_UART0);
+
+    						continue;
+    					}
+    				}
+    			}
+    			/************************* check month *************************/
+    			if(State == 1)
+    			{
+    				if(digit==0)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);          /* echo 1st character */
+    					AsciiMSB = RTCdata;        /* store 1st byte MSB  */
+    					count++;                   /* increment character count,will be 3 */
+    					digit++;                   /* increment digit, will be 1  */
+
+    					continue;
+    				}
+    				else
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);                   /* echo 2nd character */
+    					AsciiLSB = RTCdata;                 /* store 2nd byte LSB  */
+    					RTCdata = ((AsciiMSB & 0x0F) * 10); /* store nibble */
+    					RTCdata += (AsciiLSB & 0x0F);       /* add to nibble, integer */
+
+    					if(RTCdata >= 1 && RTCdata <=12)    /* check month range ( 1-12) */
+    					{
+    						DateBuffer[1] = RTCdata;          /* store mm in time buffer */
+
+    						State++;                 /* increment to ss state */
+    						count++;                 /* increment character count,will be 4 */
+    						digit = 0;               /* set digit to zero  */
+    						printf(LPC_UART0, "/");            /* and write '/' on the screen */
+
+    						continue;                /* continue for seconds */
+    					}
+    					else
+    					{
+    						Erase_And_RingTheBell(LPC_UART0);
+
+    						continue;
+    					}
+    				}
+    			}
+    			/********** check year and century *********/
+    			if(State == 2)
+    			{
+    				if(digit==0)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);          /* echo 1st character */
+    					AsciiMSB = RTCdata;        /* store 1st byte MSB  */
+
+    					count++;                   /* increment character count,will be 5 */
+    					digit++;                   /* increment digit no.  */
+
+    					continue;
+    				}
+    				if(digit == 1)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);   /* echo 2nd character */
+    					AsciiLSB = RTCdata;                 /* store 2nd byte LSB  */
+    					RTCdata = ((AsciiMSB & 0x0F) * 10); /* store nibble */
+    					RTCdata += (AsciiLSB & 0x0F);       /* add to nibble, integer */
+
+    					if(RTCdata >= 0 && RTCdata <=40)   /* check century range (0-39) */
+    					{
+    						DateBuffer[2] = RTCdata;          /* store in century buffer */
+
+    						count++;                 /* increment character count,will be 6 */
+    						digit++;                 /* increment digit number, will be 3  */
+
+    						continue;
+    					}
+    					else
+    					{
+    						Erase_Char_With_UnderScore(LPC_UART0);
+    						printf(LPC_UART0, "\7");          /* ring the bell */
+
+    						continue;
+    					}
+    				}
+    				/**********  check year  ************/
+    				if(digit == 2)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);/* echo 1st character */
+    					AsciiMSB = RTCdata;/* store 1st byte MSB  */
+
+    					count++;/* increment character count,will be 7 */
+    					digit++;/* increment digit no.  */
+
+    					continue;
+    				}
+    				if(digit == 3)
+    				{
+    					printf(LPC_UART0, "%c", RTCdata);                    /* echo 2nd character */
+    					AsciiLSB = RTCdata;                  /* store 2nd byte LSB  */
+    					RTCdata = ((AsciiMSB & 0x0F) * 10);  /* store nibble */
+    					RTCdata += (AsciiLSB & 0x0F);        /* add to nibble, integer */
+
+    					if(DateBuffer[2]==40)
+    					{
+    						if(RTCdata <=95)                     /* check year range (00-95) */
+    						{
+    							DateBuffer[3] = RTCdata;           /* store in year buffer */
+	    						DateFlag = 1;            /* Time data is ready for RTC */
+         						count++;                 /* increment character count,will be 8 */
+        						digit++;                 /* increment digit number, will be 4  */
+         						continue;
+    						}
+    						else
+    						{
+    							Erase_Char_With_UnderScore(LPC_UART0);
+    							printf(LPC_UART0, "\7");           /* ring the bell */
+
+    							continue;
+    						}
+    					}
+
+    					if(RTCdata <=99)                     /* check year range (00-99) */
+    					{
+    						DateBuffer[3] = RTCdata;           /* store in year buffer */
+
+    						DateFlag = 1;            /* Time data is ready for RTC */
+    						count++;                 /* increment character count,will be 8 */
+    						digit++;                 /* increment digit number, will be 4  */
+
+    						continue;
+    					}
+    					else
+    					{
+    						Erase_Char_With_UnderScore(LPC_UART0);
+    						printf(LPC_UART0, "\7");           /* ring the bell */
+
+    						continue;
+    					}
+    				}
+    			}
+    			continue;                      /* number of char is more than reqd */
+    			/* so go back to find the decision */
+    		}
+    		else
+    		{
+    			printf(LPC_UART0, "%c", cp);                   /* echo character */
+    			Erase_Char(LPC_UART0);
+    			printf(LPC_UART0, "\7");                 /* ring the bell */
+
+    			continue;
+    		}
+    	}
+    }
+    return(0);
+}
+
 
 
 /********************************************************************//**
