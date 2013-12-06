@@ -35,7 +35,8 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "LPC17xx.h"
-#include "lpc_types.h"
+#include "lpc_system_init.h"
+
 
 
 #ifdef __cplusplus
@@ -116,7 +117,6 @@ typedef enum {
 /**
  * @}
  */
-
 
 /* Public Functions ----------------------------------------------------------- */
 /** @defgroup WDT_Public_Functions WDT Public Functions

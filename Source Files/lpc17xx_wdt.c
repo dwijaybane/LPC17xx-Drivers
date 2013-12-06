@@ -31,13 +31,30 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc17xx_wdt.h"
-#include "lpc17xx_clkpwr.h"
-#include "lpc17xx_pinsel.h"
 
 
 /* Private Functions ---------------------------------------------------------- */
 
 static uint8_t WDT_SetTimeOut (uint8_t clk_source, uint32_t timeout);
+
+/*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
+/*********************************************************************//**
+ * @brief		WDT interrupt handler sub-routine
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void WDT_IRQHandler(void)
+{
+	// Set WDT flag according
+	if (wdt_flag == TRUE)
+		wdt_flag = FALSE;
+	else
+		wdt_flag = TRUE;
+	// Clear TimeOut flag
+	WDT_ClrTimeOutFlag();
+	// Disable WDT interrupt
+	NVIC_DisableIRQ(WDT_IRQn);
+}
 
 /********************************************************************//**
  * @brief 		Set WDT time out value and WDT mode
@@ -47,7 +64,6 @@ static uint8_t WDT_SetTimeOut (uint8_t clk_source, uint32_t timeout);
  *********************************************************************/
 static uint8_t WDT_SetTimeOut (uint8_t clk_source, uint32_t timeout)
 {
-
 	uint32_t pclk_wdt = 0;
 	uint32_t tempval = 0;
 
