@@ -31,7 +31,7 @@
 /*
  * Variables
  */
-uint32_t delay_timer;
+__IO uint32_t delay_timer;
 uint32_t led_timer;
 
 /*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
