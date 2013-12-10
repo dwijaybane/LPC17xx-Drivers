@@ -61,10 +61,16 @@ extern "C"
  * @{
  */
 
+void print_status_reg(void);
+void Read_Eeprom_Status (void);
 uint8_t Spi_Eeprom_Read_Status_Reg (void);
 uchar Spi_Eeprom_Write_Status_Reg (uint8_t status_reg);
 uchar Spi_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data);
+uchar Spi_Eeprom_Write (uint16_t eep_address, uint8_t *data_start, uint8_t length);
 uint8_t Spi_Eeprom_Read_Byte (uint16 eep_address);
+uchar Spi_Eeprom_Read (uint16_t eep_address, uint8_t *dest_addr, uint8_t length);
+void Display_Eeprom_Array (uint8_t *string, uint8_t length);
+void Display_Eeprom_Loc (uint16 mem_start_address, uint16 mem_end_address);
 
 /**
  * @}
