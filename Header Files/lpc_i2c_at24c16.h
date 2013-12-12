@@ -43,7 +43,7 @@ extern "C"
 /** @defgroup EEPROM_Public_Macros
  * @{
  */
-#define  E2P24C16_ID    0x50
+#define  E2P24C16_ID    (0xA0>>1)
 
 
 /**
@@ -56,10 +56,8 @@ extern "C"
  * @{
  */
 
-uchar I2C_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data);
-uint8_t I2C_Eeprom_Read_Byte (uint16 eep_address);
-uchar I2C_Eeprom_Write (uint16_t eep_address, uint8_t *data_start, uint8_t length);
-void I2C_Eeprom_Read (uint16 eep_address, uint8_t *dest_addr, uint8_t length);
+char I2C_Eeprom_Write (uint16 eep_address, uint8_t* byte_data, uint8_t length);
+char I2C_Eeprom_Read (uint8_t* buf_data, uint8_t length);
 void Display_Eeprom_Array (uint8_t *string, uint8_t length);
 void Display_Eeprom_Loc (uint16 mem_start_address, uint16 mem_end_address);
 

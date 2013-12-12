@@ -46,24 +46,35 @@
  * @param[in]   byte_data      Byte value
  * @return 		status
  **********************************************************************/
-uchar I2C_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data)
+char I2C_Eeprom_Write (uint16 eep_address, uint8_t* byte_data, uint8_t length)
 {
 	/* Transmit setup */
 	I2C_M_SETUP_Type txsetup;
+	uint8_t buf[length+2],i;
 
-	I2C_Tx_Buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
-	I2C_Tx_Buf[1] = (uchar) eep_address;        // 2nd byte extract
-	I2C_Tx_Buf[2] = byte_data;
+	buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
+	buf[1] = (uchar) eep_address;        // 2nd byte extract
 
+	for(i=2;i<10;i++)
+	{
+		buf[i]=*byte_data++;
+	}
 	txsetup.sl_addr7bit = E2P24C16_ID;
-	txsetup.tx_data = I2C_Tx_Buf;
-	txsetup.tx_length = 3;
+	txsetup.tx_data = buf;
+	txsetup.tx_length = sizeof(buf);
 	txsetup.rx_data = NULL;
 	txsetup.rx_length = 0;
 	txsetup.retransmissions_max = 3;
 
 	/* write byte to addr  */
-	return I2C_MasterTransferData(LPC_I2C0, &txsetup, I2C_TRANSFER_POLLING); //return status
+	if(I2C_MasterTransferData(LPC_I2C0, &txsetup, I2C_TRANSFER_POLLING)==SUCCESS) //return status
+	{
+		return (0);
+	}
+	else
+	{
+		return (-1);
+	}
 }
 
 
@@ -72,121 +83,28 @@ uchar I2C_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data)
  * @param[in]	eep_address    Word Address range[0000 - 4000]
  * @return 		Byte value
  **********************************************************************/
-uint8_t I2C_Eeprom_Read_Byte (uint16 eep_address)
+char I2C_Eeprom_Read (uint8_t* buf_data, uint8_t length)
 {
 	/* Receive setup */
 	I2C_M_SETUP_Type rxsetup;
-
-	I2C_Tx_Buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
-	I2C_Tx_Buf[1] = (uchar) eep_address;        // 2nd byte extract
+	uint8_t buf1[]={0x00,0x07};
 
 	rxsetup.sl_addr7bit = E2P24C16_ID;
-	rxsetup.tx_data = I2C_Tx_Buf;	// Get address to read at writing address
-	rxsetup.tx_length = 2;
-	rxsetup.rx_data = I2C_Rx_Buf;
-	rxsetup.rx_length = 1;
+	rxsetup.tx_data = buf1;	// Get address to read at writing address
+	rxsetup.tx_length = sizeof(buf1);
+	rxsetup.rx_data = buf_data;
+	rxsetup.rx_length = length;
 	rxsetup.retransmissions_max = 3;
 
 	if (I2C_MasterTransferData(LPC_I2C0, &rxsetup, I2C_TRANSFER_POLLING) == SUCCESS)
 	{
-		return I2C_Rx_Buf[0];
+		return (0);
 	}
 	else
 	{
-		return (0);
+		return (-1);
 	}
 }
-
-
-/*********************************************************************//**
- * @brief	    Write value array at desired address(0x000 to 0x7FF)
- * @param[in]	eep_address    EEPROM 16bit address
- * @param[in]   data_start     address of buffer
- * @param[in]   length         size of buffer
- * @return 		status
- **********************************************************************/
-uchar I2C_Eeprom_Write (uint16_t eep_address, uint8_t *data_start, uint8_t length)
-{
-	/* Transmit setup */
-	I2C_M_SETUP_Type txsetup;
-
-	uint8_t ip_len,new_length;
-	uint16_t new_address,i;
-
-	ip_len = 0x10 - (eep_address % 0x10);
-	new_address = eep_address + ip_len;
-
-	if(length > ip_len)
-	{
-		new_length = length - ip_len;
-
-		I2C_Tx_Buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
-		I2C_Tx_Buf[1] = (uchar) eep_address;        // 2nd byte extract
-
-		for(i=2; i<(length+2); i++)
-		{
-			I2C_Tx_Buf[i]=data_start[i-2];
-		}
-
-		txsetup.sl_addr7bit = E2P24C16_ID;
-		txsetup.tx_data = I2C_Tx_Buf;
-		txsetup.tx_length = ip_len+2;
-		txsetup.rx_data = NULL;
-		txsetup.rx_length = 0;
-		txsetup.retransmissions_max = 3;
-
-		I2C_MasterTransferData(LPC_I2C0, &txsetup, I2C_TRANSFER_POLLING);
-		// Reccursive function
-		I2C_Eeprom_Write (new_address,(data_start + ip_len),new_length);
-	}
-
-	if(length <= ip_len+1)
-	{
-		I2C_Tx_Buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
-		I2C_Tx_Buf[1] = (uchar) eep_address;        // 2nd byte extract
-
-		for(i=2; i<(length+2); i++)
-		{
-			I2C_Tx_Buf[i]=data_start[i-2];
-		}
-
-		txsetup.sl_addr7bit = E2P24C16_ID;
-		txsetup.tx_data = I2C_Tx_Buf;
-		txsetup.tx_length = length+2;
-		txsetup.rx_data = NULL;
-		txsetup.rx_length = 0;
-		txsetup.retransmissions_max = 3;
-
-		return I2C_MasterTransferData(LPC_I2C0, &txsetup, I2C_TRANSFER_POLLING);
-	}
-}
-
-
-/*********************************************************************//**
- * @brief	    Reads array from given address
- * @param[in]	eep_address    Word Address range[0000 - 4000]
- * @param[in]   data_start     address of buffer
- * @param[in]   length         size of buffer
- * @return 		Byte value
- **********************************************************************/
-void I2C_Eeprom_Read (uint16 eep_address, uint8_t *dest_addr, uint8_t length)
-{
-	/* Receive setup */
-	I2C_M_SETUP_Type rxsetup;
-
-	I2C_Tx_Buf[0] = (uchar)(eep_address>>8);    // 1st byte extract
-	I2C_Tx_Buf[1] = (uchar) eep_address;        // 2nd byte extract
-
-	rxsetup.sl_addr7bit = E2P24C16_ID;
-	rxsetup.tx_data = I2C_Tx_Buf;	// Get address to read at writing address
-	rxsetup.tx_length = 2;
-	rxsetup.rx_data = dest_addr;
-	rxsetup.rx_length = length;
-	rxsetup.retransmissions_max = 3;
-
-	I2C_MasterTransferData(LPC_I2C0, &rxsetup, I2C_TRANSFER_POLLING);
-}
-
 
 /*********************************************************************//**
  * @brief	    Display Read data stored in array
@@ -225,7 +143,7 @@ void Display_Eeprom_Loc (uint16 mem_start_address, uint16 mem_end_address)
 	{
 		if(count == 0) printf(LPC_UART0,"%x03   ",addr);
 
-		dat = I2C_Eeprom_Read_Byte(addr);   // read byte from address
+	//	dat = I2C_Eeprom_Read_Byte(addr);   // read byte from address
 
 		printf(LPC_UART0,"%x02  ",dat);
 		count++;
