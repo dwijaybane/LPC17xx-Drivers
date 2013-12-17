@@ -48,10 +48,18 @@ static void setSSPclock (LPC_SSP_TypeDef *SSPx, uint32_t target_clock);
  * @param		None
  * @return		None
  ***********************************************************************/
-void CS_Init1 (void)
+void CS_Init1 (LPC_SSP_TypeDef *SSPx)
 {
-	GPIO_SetDir(0, _BIT(6), 1);
-	GPIO_SetValue(0, _BIT(6));
+	if(SSPx == LPC_SSP0)
+	{
+		GPIO_SetDir(0, _BIT(16), 1);
+		GPIO_SetValue(0, _BIT(16));
+	}
+	else if (SSPx == LPC_SSP1)
+	{
+		GPIO_SetDir(0, _BIT(6), 1);
+		GPIO_SetValue(0, _BIT(6));
+	}
 }
 
 
@@ -63,15 +71,29 @@ void CS_Init1 (void)
  * 				- 1: Drive CS pin to high level
  * @return		None
  ***********************************************************************/
-void CS_Force1 (FunctionalState state)
+void CS_Force1 (LPC_SSP_TypeDef *SSPx, FunctionalState state)
 {
-	if (state)
+	if (SSPx == LPC_SSP0)
 	{
-		GPIO_SetValue(0, _BIT(6));
+		if (state)
+		{
+			GPIO_SetValue(0, _BIT(16));
+		}
+		else
+		{
+			GPIO_ClearValue(0, _BIT(16));
+		}
 	}
-	else
+	else if (SSPx == LPC_SSP1)
 	{
-		GPIO_ClearValue(0, _BIT(6));
+		if (state)
+		{
+			GPIO_SetValue(0, _BIT(6));
+		}
+		else
+		{
+			GPIO_ClearValue(0, _BIT(6));
+		}
 	}
 }
 
@@ -171,7 +193,10 @@ void SSP_Config (LPC_SSP_TypeDef *SSPx)
 	// Initialize SSP peripheral with parameter given in structure above
 	SSP_Init(SSPx, &SSP_ConfigStruct);
 
-	CS_Init1();     // Chip Select Init
+	CS_Init1(SSPx);     // Chip Select Init
+
+	// Enable SSP peripheral
+	SSP_Cmd(SSPx, ENABLE);
 
 	Buffer_Init1(); // Empty Buffer
 }
@@ -334,7 +359,7 @@ void SSP_ConfigStructInit(SSP_CFG_Type *SSP_InitStruct)
 {
 	SSP_InitStruct->CPHA = SSP_CPHA_FIRST;
 	SSP_InitStruct->CPOL = SSP_CPOL_HI;
-	SSP_InitStruct->ClockRate = 1000000;
+	SSP_InitStruct->ClockRate = 3000000;
 	SSP_InitStruct->Databit = SSP_DATABIT_8;
 	SSP_InitStruct->Mode = SSP_MASTER_MODE;
 	SSP_InitStruct->FrameFormat = SSP_FRAME_SPI;

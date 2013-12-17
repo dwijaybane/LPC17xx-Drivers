@@ -430,7 +430,7 @@ typedef struct {
  */
 
 /* SSP Init/DeInit functions --------------------------------------------------*/
-void CS_Force1 (FunctionalState state);
+void CS_Force1 (LPC_SSP_TypeDef *SSPx, FunctionalState state);
 void Buffer_Init1 (void);
 void SSP_Config (LPC_SSP_TypeDef *SSPx);
 void SSP_Init(LPC_SSP_TypeDef *SSPx, SSP_CFG_Type *SSP_ConfigStruct);
