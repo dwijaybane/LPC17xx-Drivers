@@ -68,9 +68,9 @@ void GLCD_Backlight (FunctionalState NewState)
 void GLCD_Reset (void)
 {
 	GPIO_SetValue(0, LCD_RST);
-	delay_ms(5);
+	delay_ms(2);
 	GPIO_ClearValue(0, LCD_RST);  //reset low
-	delay_ms(5);
+	delay_ms(4);
 	GPIO_SetValue(0, LCD_RST);  //reset low
 }
 
@@ -150,7 +150,6 @@ void GLCD_Init (void)
 	GPIO_SetDir(2, LCD_BK, 1);   // Backlight as output
 
 	GLCD_Reset();                // Reset GLCD
-	delay_ms(5);
 
 	Write_Command_Glcd(0x28);    // VCOM OTP
 	Write_Data_Glcd(0x0006);     // Page 55-56 of SSD2119 datasheet
@@ -266,7 +265,7 @@ uchar Write_Command_Glcd (uint8_t Command)
 	if(WriteStatus)
 	{
 		CS_Force1 (LPC_SSP1, ENABLE);                          /* CS high inactive        */
-		delay_ms(5);
+		delay_ms(4);
 		GPIO_SetValue(2, LCD_RS);  // select data mode
 		return(1);
 	}
