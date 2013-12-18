@@ -42,6 +42,11 @@
 
 /* Public Functions ----------------------------------------------------------- */
 
+/*********************************************************************//**
+ * @brief	    This function controls Backlight
+ * @param[in]	NewState	ENABLE/DISABLE the Backlight
+ * @return 		None
+ **********************************************************************/
 void GLCD_Backlight (FunctionalState NewState)
 {
 	if(NewState)
@@ -54,17 +59,32 @@ void GLCD_Backlight (FunctionalState NewState)
 	}
 }
 
-void GLCD_Reset(void)
+
+/*********************************************************************//**
+ * @brief	    This function resets GLCD
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void GLCD_Reset (void)
 {
 	GPIO_SetValue(0, LCD_RST);
-	delay_ms(3);
+	delay_ms(5);
 	GPIO_ClearValue(0, LCD_RST);  //reset low
 	delay_ms(5);
 	GPIO_SetValue(0, LCD_RST);  //reset low
 }
 
 
-void GLCD_Driver_OutCtrl(DRIVER_OUT_Type drv)
+/*********************************************************************//**
+ * @brief	    This function controls GLCD Output
+ * @param[in]	drv	    Output Format
+ * 						- TOP_LEFT
+ * 						- TOP_RIGHT
+ * 						- BOTTOM_LEFT
+ * 						- BOTTOM_RIGHT
+ * @return 		None
+ **********************************************************************/
+void GLCD_Driver_OutCtrl (DRIVER_OUT_Type drv)
 {
 	Write_Command_Glcd(0x01);    // Driver Output Control
 
@@ -91,6 +111,12 @@ void GLCD_Driver_OutCtrl(DRIVER_OUT_Type drv)
 	}
 }
 
+
+/*********************************************************************//**
+ * @brief	    This function Sets Cursor to Home
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
 void GLCD_Display_Home (void)
 {
 	Write_Command_Glcd(0x4E);    // RAM address set
@@ -111,6 +137,12 @@ void GLCD_Display_Home (void)
 	Write_Command_Glcd(0x22);    // RAM data write/read
 }
 
+
+/*********************************************************************//**
+ * @brief	    This function Initializes GLCD
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
 void GLCD_Init (void)
 {
 	GPIO_SetDir(2, LCD_RS, 1);   // RS as output
@@ -118,59 +150,60 @@ void GLCD_Init (void)
 	GPIO_SetDir(2, LCD_BK, 1);   // Backlight as output
 
 	GLCD_Reset();                // Reset GLCD
+	delay_ms(5);
 
 	Write_Command_Glcd(0x28);    // VCOM OTP
-	Write_Data_Glcd(0x0006);       // Page 55-56 of SSD2119 datasheet
+	Write_Data_Glcd(0x0006);     // Page 55-56 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x00);    // start Oscillator
-	Write_Data_Glcd(0x0001);       // Page 36 of SSD2119 datasheet
+	Write_Data_Glcd(0x0001);     // Page 36 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x10);    // Sleep mode
-	Write_Data_Glcd(0x0000);       // Page 49 of SSD2119 datasheet
+	Write_Data_Glcd(0x0000);     // Page 49 of SSD2119 datasheet
 
 	GLCD_Driver_OutCtrl (TOP_LEFT);
 
 	Write_Command_Glcd(0x02);    // LCD Driving Waveform Control
-	Write_Data_Glcd(0x0600);       // Page 40-42 of SSD2119 datasheet
+	Write_Data_Glcd(0x0600);     // Page 40-42 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x03);    // Power Control 1
-	Write_Data_Glcd(0x6A38);       // Page 43-44 of SSD2119 datasheet
+	Write_Data_Glcd(0x6A38);     // Page 43-44 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x11);    // Entry Mode
-	Write_Data_Glcd(0x6870);       // Page 50-52 of SSD2119 datasheet
+	Write_Data_Glcd(0x6870);     // Page 50-52 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x0F);    // Gate Scan Position
-	Write_Data_Glcd(0x0000);       // Page 49 of SSD2119 datasheet
+	Write_Data_Glcd(0x0000);     // Page 49 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x0B);    // Frame Cycle Control
-	Write_Data_Glcd(0x5308);       // Page 45 of SSD2119 datasheet
+	Write_Data_Glcd(0x5308);     // Page 45 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x0C);    // Power Control 2
-	Write_Data_Glcd(0x0003);       // Page 47 of SSD2119 datasheet
+	Write_Data_Glcd(0x0003);     // Page 47 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x0D);    // Power Control 3
-	Write_Data_Glcd(0x000A);       // Page 48 of SSD2119 datasheet
+	Write_Data_Glcd(0x000A);     // Page 48 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x0E);    // Power Control 4
-	Write_Data_Glcd(0x2E00);       // Page 48 of SSD2119 datasheet
+	Write_Data_Glcd(0x2E00);     // Page 48 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x1E);    // Power Control 5
-	Write_Data_Glcd(0x00BE);       // Page 53 of SSD2119 datasheet
+	Write_Data_Glcd(0x00BE);     // Page 53 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x25);    // Frame Frequency Control
-	Write_Data_Glcd(0x8000);       // Page 53 of SSD2119 datasheet
+	Write_Data_Glcd(0x8000);     // Page 53 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x26);    // Analog setting
-	Write_Data_Glcd(0x7800);       // Page 54 of SSD2119 datasheet
+	Write_Data_Glcd(0x7800);     // Page 54 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x4E);    // Ram Address Set
-	Write_Data_Glcd(0x0000);       // Page 58 of SSD2119 datasheet
+	Write_Data_Glcd(0x0000);     // Page 58 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x4F);    // Ram Address Set
-	Write_Data_Glcd(0x0000);       // Page 58 of SSD2119 datasheet
+	Write_Data_Glcd(0x0000);     // Page 58 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x12);    // Sleep mode
-	Write_Data_Glcd(0x08D9);       // Page 49 of SSD2119 datasheet
+	Write_Data_Glcd(0x08D9);     // Page 49 of SSD2119 datasheet
 
 	// Gamma Control (R30h to R3Bh) -- Page 56 of SSD2119 datasheet
 	Write_Command_Glcd(0x30);
@@ -273,6 +306,11 @@ uchar Write_Data_Glcd (uint16_t data)
 }
 
 
+/*********************************************************************//**
+ * @brief	    This function Displays RGB
+ * @param[in]	data   Enter color data
+ * @return 		None
+ **********************************************************************/
 void Display_RGB (uint16_t data)
 {
 	uint16_t i,j;
@@ -288,9 +326,14 @@ void Display_RGB (uint16_t data)
 }
 
 
-void GLCD_Test(void)
+/*********************************************************************//**
+ * @brief	    This is a GLCD Test function
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void GLCD_Test (void)
 {
-	uint16_t i,j,k;
+	uint32_t i,j,k;
 	k=16;
 
 	GLCD_Display_Home();
