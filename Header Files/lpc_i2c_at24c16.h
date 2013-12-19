@@ -57,8 +57,9 @@ extern "C"
  */
 
 char I2C_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data);
-char I2C_Eeprom_Write (uint8_t eep_address, uint8_t* byte_data, uint8_t length);
-char I2C_Eeprom_Read (uint8_t eep_address, uint8_t* buf_data, uint8_t length);
+uint8_t I2C_Eeprom_Read_Byte (uint16_t eep_address);
+char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint8_t length);
+char I2C_Eeprom_Read (uint16_t eep_address, uint8_t* buf_data, uint8_t length);
 void Display_Eeprom_Array (uint8_t *string, uint8_t length);
 void Display_Eeprom_Loc (uint16 mem_start_address, uint16 mem_end_address);
 
