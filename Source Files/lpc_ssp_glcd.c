@@ -27,14 +27,19 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc_ssp_glcd.h"
-#include "mario.h"
+#include "Font_24x16.h"
+
 
 /* If this source file built with example, the LPC17xx FW library configuration
  * file in each example directory ("lpc17xx_libcfg.h") must be included,
  * otherwise the default FW library configuration file must be included instead
  */
 
+/******************************************************************************/
+static volatile unsigned short TextColor = Black, BackColor = White;
 
+uint8_t lcd_text[2][16+1] = {"   NXP SEMI.    ",      /* Buffer for LCD text      */
+                          "  LPC1768/CM3" };
 
 /** @addtogroup GLCD_Public_Functions
  * @{
@@ -243,6 +248,341 @@ void GLCD_Init (void)
 	Write_Command_Glcd(0x22);    // RAM data write/read
 }
 
+/*******************************************************************************
+* Set draw window region to whole screen                                       *
+*   Parameter:                                                                 *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_WindowMax (void)
+{
+	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
+	Write_Data_Glcd(0x0000);
+
+	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
+	Write_Data_Glcd(WIDTH-1);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
+	Write_Data_Glcd(0);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
+	Write_Data_Glcd((HEIGHT-1)<<8);
+}
+
+
+/*******************************************************************************
+* Draw a pixel in foreground color                                             *
+*   Parameter:      x:        horizontal position                              *
+*                   y:        vertical position                                *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_PutPixel (unsigned int x, unsigned int y)
+{
+	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x22);      /* RAM data write     */
+	Write_Data_Glcd(TextColor);
+}
+
+
+/*******************************************************************************
+* Set foreground color                                                         *
+*   Parameter:      color:    foreground color                                 *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_SetTextColor (unsigned short color)
+{
+	TextColor = color;
+}
+
+
+/*******************************************************************************
+* Set background color                                                         *
+*   Parameter:      color:    background color                                 *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_SetBackColor (unsigned short color)
+{
+	BackColor = color;
+}
+
+
+/*******************************************************************************
+* Start of data writing to LCD controller                                      *
+*   Parameter:                                                                 *
+*   Return:                                                                    *
+*******************************************************************************/
+
+static __INLINE void wr_dat_start (void)
+{
+	CS_Force1 (LPC_SSP1, DISABLE);
+	GPIO_SetValue(2, LCD_RS);  // select data mode
+}
+
+
+/*******************************************************************************
+* Stop of data writing to LCD controller                                       *
+*   Parameter:                                                                 *
+*   Return:                                                                    *
+*******************************************************************************/
+
+static __INLINE void wr_dat_stop (void)
+{
+	CS_Force1 (LPC_SSP1, ENABLE);
+}
+
+
+/*******************************************************************************
+* Data writing to LCD controller                                               *
+*   Parameter:    c:      data to be written                                   *
+*   Return:                                                                    *
+*******************************************************************************/
+
+static __INLINE void wr_dat_only (unsigned short c)
+{
+	SSP_DATA_SETUP_Type xferConfig;
+
+	Tx_Buf1[0] = (uchar)(c>>8);    // 1st byte extract
+	Tx_Buf1[1] = (uchar) c;        // 2nd byte extract
+
+	xferConfig.tx_data = Tx_Buf1;               /* Send Instruction Byte    */
+	xferConfig.rx_data = NULL;
+	xferConfig.length = 2;
+	SSP_ReadWrite(LPC_SSP1, &xferConfig, SSP_TRANSFER_POLLING);
+}
+
+
+/*******************************************************************************
+* Clear display                                                                *
+*   Parameter:      color:    display clearing color                           *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_Clear (unsigned short color)
+{
+	unsigned int   i;
+
+	GLCD_WindowMax();
+
+	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
+	Write_Data_Glcd(0);
+
+	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
+	Write_Data_Glcd(0);
+
+	Write_Command_Glcd(0x22);
+	wr_dat_start();
+	for(i = 0; i < (WIDTH*HEIGHT); i++)
+		wr_dat_only(color);
+	wr_dat_stop();
+}
+
+
+/*******************************************************************************
+* Draw character on given position                                             *
+*   Parameter:      x:        horizontal position                              *
+*                   y:        vertical position                                *
+*                   c:        pointer to character bitmap                      *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_DrawChar (unsigned int x, unsigned int y, unsigned short *c)
+{
+	int idx = 0, i, j;
+
+	x = x-CHAR_W;
+
+	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
+	Write_Data_Glcd(x+CHAR_W-1);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
+	Write_Data_Glcd((y+CHAR_H-1)<<8);
+
+	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x22);
+
+	wr_dat_start();
+	for (j = 0; j < CHAR_H; j++)
+	{
+		for (i = 0; i<CHAR_W; i++)
+		{
+			if((c[idx] & (1 << i)) == 0x00)
+			{
+				wr_dat_only(BackColor);
+			}
+			else
+			{
+				wr_dat_only(TextColor);
+			}
+		}
+		c++;
+	}
+	wr_dat_stop();
+}
+
+
+/*******************************************************************************
+* Disply character on given line                                               *
+*   Parameter:      ln:       line number                                      *
+*                   col:      column number                                    *
+*                   c:        ascii character                                  *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_DisplayChar (unsigned int ln, unsigned int col, unsigned char c)
+{
+	c -= 32;
+	GLCD_DrawChar(col * CHAR_W, ln * CHAR_H, (unsigned short *)&Font_24x16[c * CHAR_H]);
+}
+
+
+/*******************************************************************************
+* Disply string on given line                                                  *
+*   Parameter:      ln:       line number                                      *
+*                   col:      column number                                    *
+*                   s:        pointer to string                                *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_DisplayString (unsigned int ln, unsigned int col, unsigned char *s)
+{
+	GLCD_WindowMax();
+	while (*s)
+	{
+		GLCD_DisplayChar(ln, col++, *s++);
+	}
+}
+
+
+/*******************************************************************************
+* Clear given line                                                             *
+*   Parameter:      ln:       line number                                      *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_ClearLn (unsigned int ln)
+{
+	GLCD_WindowMax();
+	GLCD_DisplayString(ln, 0, "                    ");
+}
+
+/*******************************************************************************
+* Draw bargraph                                                                *
+*   Parameter:      x:        horizontal position                              *
+*                   y:        vertical position                                *
+*                   w:        maximum width of bargraph (in pixels)            *
+*                   val:      value of active bargraph (in 1/1024)             *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_Bargraph (unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int val)
+{
+	int i,j;
+
+	x = WIDTH-x-w;
+
+	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
+	Write_Data_Glcd(y+CHAR_H-1);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
+	Write_Data_Glcd((x+w-1)<<8);
+
+	val = (val * w) >> 10;                /* Scale value for 24x12 characters   */
+
+	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x22);
+
+	wr_dat_start();
+	for (i = 0; i < h; i++) {
+		for (j = w-1; j >= 0; j--) {
+			if(j >= val) {
+				wr_dat_only(BackColor);
+			} else {
+				wr_dat_only(TextColor);
+			}
+		}
+	}
+	wr_dat_stop();
+}
+
+
+/*******************************************************************************
+* Display graphical bitmap image at position x horizontally and y vertically   *
+* (This function is optimized for 16 bits per pixel format, it has to be       *
+*  adapted for any other bits per pixel format)                                *
+*   Parameter:      x:        horizontal position                              *
+*                   y:        vertical position                                *
+*                   w:        width of bitmap                                  *
+*                   h:        height of bitmap                                 *
+*                   bitmap:   address at which the bitmap data resides         *
+*   Return:                                                                    *
+*******************************************************************************/
+
+void GLCD_Bitmap (unsigned int x, unsigned int y, unsigned int w, unsigned int h, uint16_t *bitmap)
+{
+	unsigned int i,j,k;
+
+	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
+	Write_Data_Glcd(x+w-1);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
+	Write_Data_Glcd((y+h-1)<<8);
+
+	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x22);
+
+	wr_dat_start();
+	k = 16;
+	for (j = 0; j < h; j++)
+	{
+		for (i = 0; i < w; i++)
+		{
+			wr_dat_only(bitmap[k++]);
+		}
+	}
+	wr_dat_stop();
+}
+
 
 /*********************************************************************//**
  * @brief	    This function writes commands to the GLCD
@@ -320,30 +660,6 @@ void Display_RGB (uint16_t data)
 		for(j=0;j<240;j++)
 		{
 			Write_Data_Glcd(data);
-		}
-	}
-}
-
-
-/*********************************************************************//**
- * @brief	    This is a GLCD Test function
- * @param[in]	None
- * @return 		None
- **********************************************************************/
-void GLCD_Test (void)
-{
-	uint32_t i,j,k;
-	k=16;
-
-	GLCD_Display_Home();
-	GLCD_Backlight(ENABLE);
-
-	for(i=0;i<320;i++)
-	{
-		for(j=0;j<240;j++)
-		{
-			Write_Data_Glcd(image[k]);
-			k++;
 		}
 	}
 }
