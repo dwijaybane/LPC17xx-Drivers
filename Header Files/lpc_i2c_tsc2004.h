@@ -32,7 +32,6 @@
 #include "LPC17xx.h"
 #include "lpc_system_init.h"
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -150,10 +149,12 @@ typedef enum {
 }resolution_mode;
 
 
-typedef struct {
+typedef struct
+{
 	uint16_t x;
 	uint16_t y;
-	uint16_t z1, z2;
+	uint16_t z1;
+	uint16_t z2;
 }ts_event;
 
 
@@ -167,12 +168,17 @@ typedef struct {
  * @{
  */
 void TSC2004_Init (void);
+
 char I2C_TSC2004_Write_Byte (uint8_t Command);
 char I2C_TSC2004_Write_Word (uint8_t Command, uint16_t word_data);
 uint16_t I2C_TSC2004_Read_Word (uint8_t Command);
-char I2C_Eeprom_Read (uint16_t eep_address, uint8_t* buf_data, uint8_t length);
-void TSC2004_Read_Reg (register_address reg);
-void TSC2004_Read_Values (void);
+
+uint16_t TSC2004_Read_Reg (register_address reg);
+void TSC2004_Read_Values (ts_event *tc);
+
+void TSC2004_Read_Value_Test (void);
+void TSC2004_Draw_Test (void);
+void TSC2004_Slide_Test (void);
 
 
 /**
