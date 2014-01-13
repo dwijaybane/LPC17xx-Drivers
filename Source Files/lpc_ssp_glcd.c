@@ -27,7 +27,9 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc_ssp_glcd.h"
+#include "math.h"
 #include "Font_24x16.h"
+#include "Font_5x7.h"
 
 
 /* If this source file built with example, the LPC17xx FW library configuration
@@ -36,10 +38,11 @@
  */
 
 /******************************************************************************/
-static volatile unsigned short TextColor = Black, BackColor = White;
+static volatile uint16_t TextColor = Black, BackColor = White;
 
-uint8_t lcd_text[2][16+1] = {"   NXP SEMI.    ",      /* Buffer for LCD text      */
-                          "  LPC1768/CM3" };
+// Swap two bytes
+#define SWAP(x,y) do { (x)=(x)^(y); (y)=(x)^(y); (x)=(x)^(y); } while(0)
+#define bit_test(D,i) (D & (0x01 << i))
 
 /** @addtogroup GLCD_Public_Functions
  * @{
@@ -118,28 +121,60 @@ void GLCD_Driver_OutCtrl (DRIVER_OUT_Type drv)
 
 
 /*********************************************************************//**
+ * @brief	    Set draw window region to required width and height
+ *              as well as location
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ *              w        width of bitmap
+ *              h        height of bitmap
+ * @return 		None
+ **********************************************************************/
+void GLCD_Window (uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+{
+	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
+	Write_Data_Glcd(x);
+
+	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
+	Write_Data_Glcd(x+w-1);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
+	Write_Data_Glcd(y);
+
+	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
+	Write_Data_Glcd((y+h-1)<<8);
+}
+
+
+/*********************************************************************//**
+ * @brief	    This function Sets Cursor to to desired location
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ *              w        width of bitmap
+ *              h        height of bitmap
+ * @return 		None
+ **********************************************************************/
+void GLCD_Set_Loc (uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+{
+	GLCD_Window (x,y,w,h);
+
+	Write_Command_Glcd(0x4E);    // GDDRAM Horizontal
+	Write_Data_Glcd(x);       // Page 58 of SSD2119 datasheet
+
+	Write_Command_Glcd(0x4F);    // GDDRAM Vertical
+	Write_Data_Glcd(y);       // Page 58 of SSD2119 datasheet
+
+	Write_Command_Glcd(0x22);    // RAM data write/read
+}
+
+
+/*********************************************************************//**
  * @brief	    This function Sets Cursor to Home
  * @param[in]	None
  * @return 		None
  **********************************************************************/
 void GLCD_Display_Home (void)
 {
-	Write_Command_Glcd(0x4E);    // RAM address set
-	Write_Data_Glcd(0x0000);       // Page 58 of SSD2119 datasheet
-
-	Write_Command_Glcd(0x4F);    // RAM address set
-	Write_Data_Glcd(0x0000);       // Page 58 of SSD2119 datasheet
-
-	Write_Command_Glcd(0x44);    // Vertical RAM address position
-	Write_Data_Glcd(0xEF00);       // Page 57 of SSD2119 datasheet
-
-	Write_Command_Glcd(0x45);    // Horizontal RAM address position
-	Write_Data_Glcd(0x0000);       // Page 57 of SSD2119 datasheet
-
-	Write_Command_Glcd(0x46);    // Horizontal RAM address position
-	Write_Data_Glcd(0x013F);       // Page 57 of SSD2119 datasheet
-
-	Write_Command_Glcd(0x22);    // RAM data write/read
+	GLCD_Set_Loc (0,0,320,240);
 }
 
 
@@ -171,7 +206,7 @@ void GLCD_Init (void)
 	Write_Data_Glcd(0x0600);     // Page 40-42 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x03);    // Power Control 1
-	Write_Data_Glcd(0x6A38);     // Page 43-44 of SSD2119 datasheet
+	Write_Data_Glcd(0x6A38);     // Page 43-44 of SSD2119 datasheet 6A38
 
 	Write_Command_Glcd(0x11);    // Entry Mode
 	Write_Data_Glcd(0x6870);     // Page 50-52 of SSD2119 datasheet
@@ -195,7 +230,7 @@ void GLCD_Init (void)
 	Write_Data_Glcd(0x00BE);     // Page 53 of SSD2119 datasheet
 
 	Write_Command_Glcd(0x25);    // Frame Frequency Control
-	Write_Data_Glcd(0x8000);     // Page 53 of SSD2119 datasheet
+	Write_Data_Glcd(0x8000);     // Page 53 of SSD2119 datasheet  8000
 
 	Write_Command_Glcd(0x26);    // Analog setting
 	Write_Data_Glcd(0x7800);     // Page 54 of SSD2119 datasheet
@@ -248,36 +283,14 @@ void GLCD_Init (void)
 	Write_Command_Glcd(0x22);    // RAM data write/read
 }
 
-/*******************************************************************************
-* Set draw window region to whole screen                                       *
-*   Parameter:                                                                 *
-*   Return:                                                                    *
-*******************************************************************************/
 
-void GLCD_WindowMax (void)
-{
-	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
-	Write_Data_Glcd(0x0000);
-
-	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
-	Write_Data_Glcd(WIDTH-1);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
-	Write_Data_Glcd(0);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
-	Write_Data_Glcd((HEIGHT-1)<<8);
-}
-
-
-/*******************************************************************************
-* Draw a pixel in foreground color                                             *
-*   Parameter:      x:        horizontal position                              *
-*                   y:        vertical position                                *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_PutPixel (unsigned int x, unsigned int y)
+/*********************************************************************//**
+ * @brief	    Draw a pixel in foreground color
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ * @return 		None
+ **********************************************************************/
+void GLCD_PutPixel (uint16_t x, uint16_t y, uint16_t color)
 {
 	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
 	Write_Data_Glcd(x);
@@ -286,40 +299,37 @@ void GLCD_PutPixel (unsigned int x, unsigned int y)
 	Write_Data_Glcd(y);
 
 	Write_Command_Glcd(0x22);      /* RAM data write     */
-	Write_Data_Glcd(TextColor);
+	Write_Data_Glcd(color);
 }
 
 
-/*******************************************************************************
-* Set foreground color                                                         *
-*   Parameter:      color:    foreground color                                 *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_SetTextColor (unsigned short color)
+/*********************************************************************//**
+ * @brief	    Set foreground color
+ * @param[in]	color    foreground color
+ * @return 		None
+ **********************************************************************/
+void GLCD_SetTextColor (uint16_t color)
 {
 	TextColor = color;
 }
 
 
-/*******************************************************************************
-* Set background color                                                         *
-*   Parameter:      color:    background color                                 *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_SetBackColor (unsigned short color)
+/*********************************************************************//**
+ * @brief	    Set background color
+ * @param[in]	color    background color
+ * @return 		None
+ **********************************************************************/
+void GLCD_SetBackColor (uint16_t color)
 {
 	BackColor = color;
 }
 
 
-/*******************************************************************************
-* Start of data writing to LCD controller                                      *
-*   Parameter:                                                                 *
-*   Return:                                                                    *
-*******************************************************************************/
-
+/*********************************************************************//**
+ * @brief	    Start of data writing to LCD controller
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
 static __INLINE void wr_dat_start (void)
 {
 	CS_Force1 (LPC_SSP1, DISABLE);
@@ -327,25 +337,23 @@ static __INLINE void wr_dat_start (void)
 }
 
 
-/*******************************************************************************
-* Stop of data writing to LCD controller                                       *
-*   Parameter:                                                                 *
-*   Return:                                                                    *
-*******************************************************************************/
-
+/*********************************************************************//**
+ * @brief	    Stop of data writing to LCD controller
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
 static __INLINE void wr_dat_stop (void)
 {
 	CS_Force1 (LPC_SSP1, ENABLE);
 }
 
 
-/*******************************************************************************
-* Data writing to LCD controller                                               *
-*   Parameter:    c:      data to be written                                   *
-*   Return:                                                                    *
-*******************************************************************************/
-
-static __INLINE void wr_dat_only (unsigned short c)
+/*********************************************************************//**
+ * @brief	    Data writing to LCD controller
+ * @param[in]	c     data to be written
+ * @return 		None
+ **********************************************************************/
+static __INLINE void wr_dat_only (uint16_t c)
 {
 	SSP_DATA_SETUP_Type xferConfig;
 
@@ -359,17 +367,16 @@ static __INLINE void wr_dat_only (unsigned short c)
 }
 
 
-/*******************************************************************************
-* Clear display                                                                *
-*   Parameter:      color:    display clearing color                           *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_Clear (unsigned short color)
+/*********************************************************************//**
+ * @brief	    Clear display
+ * @param[in]	color    display clearing color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Clear (uint16_t color)
 {
 	unsigned int   i;
 
-	GLCD_WindowMax();
+	GLCD_Window (0,0,320,240);    // Window Max
 
 	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
 	Write_Data_Glcd(0);
@@ -385,15 +392,14 @@ void GLCD_Clear (unsigned short color)
 }
 
 
-/*******************************************************************************
-* Draw character on given position                                             *
-*   Parameter:      x:        horizontal position                              *
-*                   y:        vertical position                                *
-*                   c:        pointer to character bitmap                      *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_DrawChar (unsigned int x, unsigned int y, unsigned short *c)
+/*********************************************************************//**
+ * @brief	    Draw character on given position
+ * @param[in]	x       horizontal position
+ *              y       vertical position
+ *              c       pointer to character bitmap
+ * @return 		None
+ **********************************************************************/
+void GLCD_Draw_Char (uint16_t x, uint16_t y, uint16_t *c)
 {
 	int idx = 0, i, j;
 
@@ -439,137 +445,66 @@ void GLCD_DrawChar (unsigned int x, unsigned int y, unsigned short *c)
 }
 
 
-/*******************************************************************************
-* Disply character on given line                                               *
-*   Parameter:      ln:       line number                                      *
-*                   col:      column number                                    *
-*                   c:        ascii character                                  *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_DisplayChar (unsigned int ln, unsigned int col, unsigned char c)
+/*********************************************************************//**
+ * @brief	    Disply character on given line
+ * @param[in]	ln       line number
+ *              col      column number
+ *              c        ascii character
+ * @return 		None
+ **********************************************************************/
+void GLCD_Display_Char (uint16_t ln, uint16_t col, uchar c)
 {
 	c -= 32;
-	GLCD_DrawChar(col * CHAR_W, ln * CHAR_H, (unsigned short *)&Font_24x16[c * CHAR_H]);
+	GLCD_Draw_Char(col * CHAR_W, ln * CHAR_H, (uint16_t *)&Font_24x16[c * CHAR_H]);
 }
 
 
-/*******************************************************************************
-* Disply string on given line                                                  *
-*   Parameter:      ln:       line number                                      *
-*                   col:      column number                                    *
-*                   s:        pointer to string                                *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_DisplayString (unsigned int ln, unsigned int col, unsigned char *s)
+/*********************************************************************//**
+ * @brief	    Disply string on given line
+ * @param[in]	ln       line number
+ *              col      column number
+ *              s        pointer to string
+ * @return 		None
+ **********************************************************************/
+void GLCD_Display_String (uint16_t ln, uint16_t col, uchar *s)
 {
-	GLCD_WindowMax();
+	GLCD_Window(0,0,320,240);  // Window Max
 	while (*s)
 	{
-		GLCD_DisplayChar(ln, col++, *s++);
+		GLCD_Display_Char(ln, col++, *s++);
 	}
 }
 
 
-/*******************************************************************************
-* Clear given line                                                             *
-*   Parameter:      ln:       line number                                      *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_ClearLn (unsigned int ln)
+/*********************************************************************//**
+ * @brief	    Clear given line
+ * @param[in]	ln       line number
+ * @return 		None
+ **********************************************************************/
+void GLCD_ClearLn (uint16_t ln)
 {
-	GLCD_WindowMax();
-	GLCD_DisplayString(ln, 0, "                    ");
-}
-
-/*******************************************************************************
-* Draw bargraph                                                                *
-*   Parameter:      x:        horizontal position                              *
-*                   y:        vertical position                                *
-*                   w:        maximum width of bargraph (in pixels)            *
-*                   val:      value of active bargraph (in 1/1024)             *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_Bargraph (unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int val)
-{
-	int i,j;
-
-	x = WIDTH-x-w;
-
-	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
-	Write_Data_Glcd(y);
-
-	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
-	Write_Data_Glcd(y+CHAR_H-1);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
-	Write_Data_Glcd(x);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
-	Write_Data_Glcd((x+w-1)<<8);
-
-	val = (val * w) >> 10;                /* Scale value for 24x12 characters   */
-
-	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
-	Write_Data_Glcd(y);
-
-	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
-	Write_Data_Glcd(x);
-
-	Write_Command_Glcd(0x22);
-
-	wr_dat_start();
-	for (i = 0; i < h; i++) {
-		for (j = w-1; j >= 0; j--) {
-			if(j >= val) {
-				wr_dat_only(BackColor);
-			} else {
-				wr_dat_only(TextColor);
-			}
-		}
-	}
-	wr_dat_stop();
+	GLCD_Window(0,0,320,240);  // Window Max
+	GLCD_Display_String(ln, 0, "                    ");
 }
 
 
-/*******************************************************************************
-* Display graphical bitmap image at position x horizontally and y vertically   *
-* (This function is optimized for 16 bits per pixel format, it has to be       *
-*  adapted for any other bits per pixel format)                                *
-*   Parameter:      x:        horizontal position                              *
-*                   y:        vertical position                                *
-*                   w:        width of bitmap                                  *
-*                   h:        height of bitmap                                 *
-*                   bitmap:   address at which the bitmap data resides         *
-*   Return:                                                                    *
-*******************************************************************************/
-
-void GLCD_Bitmap (unsigned int x, unsigned int y, unsigned int w, unsigned int h, uint16_t *bitmap)
+/*********************************************************************//**
+ * @brief	    Display graphical bitmap image at position x horizontally
+ *              and y vertically (This function is optimized for
+ *              16 bits per pixel format, it has to be adapted for
+ *              any other bits per pixel format)
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ *              w        width of bitmap
+ *              h        height of bitmap
+ *              bitmap   address at which the bitmap data resides
+ * @return 		None
+ **********************************************************************/
+void GLCD_Bitmap (uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t *bitmap)
 {
-	unsigned int i,j,k;
+	uint32_t i,j,k;
 
-	Write_Command_Glcd(0x45);      /* Horizontal GRAM Start Address      */
-	Write_Data_Glcd(x);
-
-	Write_Command_Glcd(0x46);      /* Horizontal GRAM End   Address (-1) */
-	Write_Data_Glcd(x+w-1);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM Start Address      */
-	Write_Data_Glcd(y);
-
-	Write_Command_Glcd(0x44);      /* Vertical   GRAM End   Address (-1) */
-	Write_Data_Glcd((y+h-1)<<8);
-
-	Write_Command_Glcd(0x4E);     /* GDDRAM Horizontal */
-	Write_Data_Glcd(x);
-
-	Write_Command_Glcd(0x4F);     /* GDDRAM Vertical */
-	Write_Data_Glcd(y);
-
-	Write_Command_Glcd(0x22);
+	GLCD_Set_Loc (x,y,w,h);
 
 	wr_dat_start();
 	k = 16;
@@ -585,6 +520,979 @@ void GLCD_Bitmap (unsigned int x, unsigned int y, unsigned int w, unsigned int h
 
 
 /*********************************************************************//**
+ * @brief	    F at position x horizontally
+ *              and y vertically (This function is optimized for
+ *              16 bits per pixel format, it has to be adapted for
+ *              any other bits per pixel format)
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ *              w        width of bitmap
+ *              h        height of bitmap
+ *              color    window color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Window_Fill (uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
+{
+	uint32_t i,j;
+
+	GLCD_Set_Loc (x,y,w,h);
+
+	wr_dat_start();
+	for (j = 0; j < h; j++)
+	{
+		for (i = 0; i < w; i++)
+		{
+			wr_dat_only(color);
+		}
+	}
+	wr_dat_stop();
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw a line on a graphic LCD using Bresenham's
+ *              line drawing algorithm
+ * @param[in]	(x1, y1)   the start coordinate
+ *              (x2, y2)   the end coordinate
+ *              color      line color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color)
+{
+	int16_t  x, y, addx, addy, dx, dy;
+	int32_t P,i;
+
+	dx = abs((int16_t)(x2 - x1));
+	dy = abs((int16_t)(y2 - y1));
+	x = x1;
+	y = y1;
+
+	if(x1 > x2)
+		addx = -1;
+	else
+		addx = 1;
+	if(y1 > y2)
+		addy = -1;
+	else
+		addy = 1;
+
+
+	if(dx >= dy)
+	{
+		P = 2*dy - dx;
+
+		for(i=0; i<=dx; ++i)
+		{
+			GLCD_PutPixel(x, y, color);
+
+			if(P < 0)
+			{
+				P += 2*dy;
+				x += addx;
+			}
+			else
+			{
+				P += 2*dy - 2*dx;
+				x += addx;
+				y += addy;
+			}
+		}
+	}
+	else
+	{
+		P = 2*dx - dy;
+
+		for(i=0; i<=dy; ++i)
+		{
+			GLCD_PutPixel(x, y, color);
+
+			if(P < 0)
+			{
+				P += 2*dx;
+				y += addy;
+			}
+			else
+			{
+				P += 2*dx - 2*dy;
+				x += addx;
+				y += addy;
+			}
+		}
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw a Rectangle on a graphic LCD
+ * @param[in]	(x1, y1)     the start coordinate
+ *              (x2, y2)     the end coordinate
+ *              fill         Fill Rectangle TRUE/FALSE or ON/OFF
+ *              color        Boundary color
+ *              fill_color   fill color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Rect(COORDINATE_Type *p1, COORDINATE_Type *p2, Bool fill, uint16_t color, uint16_t fill_color)
+{
+	int16_t  width,height;                          // Find the y min and max
+
+	if(fill)
+	{
+		if(p2->x > p1->x)
+		{
+			if(p2->y > p1->y)
+			{
+				width = p2->x - p1->x;
+				height = p2->y - p1->y;
+				GLCD_Window_Fill(p1->x+1,p1->y+1,width-1,height-1,fill_color);
+			}
+			else
+			{
+				width = p2->x - p1->x;
+				height = p1->y - p2->y;
+				GLCD_Window_Fill(p1->x+1,p2->y+1,width-1,height-1,fill_color);
+			}
+		}
+		else
+		{
+			if(p2->y > p1->y)
+			{
+				width = p1->x - p2->x;
+				height = p2->y - p1->y;
+				GLCD_Window_Fill(p2->x+1,p1->y+1,width-1,height-1,fill_color);
+			}
+			else
+			{
+				width = p1->x - p2->x;
+				height = p1->y - p2->y;
+				GLCD_Window_Fill(p2->x+1,p2->y+1,width-1,height-1,fill_color);
+			}
+		}
+		fill = NO;
+	}
+	if(!fill)
+	{
+		GLCD_Line(p1->x, p1->y, p2->x, p1->y, color);      // Draw the outer border 4 sides
+		GLCD_Line(p1->x, p2->y, p2->x, p2->y, color);
+		GLCD_Line(p1->x, p1->y, p1->x, p2->y, color);
+		GLCD_Line(p2->x, p1->y, p2->x, p2->y, color);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw a frame on a graphic LCD
+ * @param[in]	(x1, y1)     the start coordinate
+ *              (x2, y2)     the end coordinate
+ *              frame_width  Total Width of Frame
+ *              color        Boundary color
+ *              fill_color   Frame fill color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Frame(COORDINATE_Type *p1, COORDINATE_Type *p2, int16_t frame_width, uint16_t color, uint16_t fill_color)
+{
+	int16_t fw;                          // Find the y min and max
+
+	fw = frame_width;
+
+	while(fw)
+	{
+		if(fw < frame_width)
+		{
+			GLCD_Line(p1->x, p1->y+fw, p2->x, p1->y+fw, fill_color);      // Draw the interior 4 sides
+			GLCD_Line(p1->x, p2->y-fw, p2->x, p2->y-fw, fill_color);
+			GLCD_Line(p1->x+fw, p1->y, p1->x+fw, p2->y, fill_color);
+			GLCD_Line(p2->x-fw, p1->y, p2->x-fw, p2->y, fill_color);
+			fw--;
+		}
+		else
+		{
+			GLCD_Line(p1->x, p1->y+fw, p2->x, p1->y+fw, color);      // inner border 4 sides
+			GLCD_Line(p1->x, p2->y-fw, p2->x, p2->y-fw, color);
+			GLCD_Line(p1->x+fw, p1->y, p1->x+fw, p2->y, color);
+			GLCD_Line(p2->x-fw, p1->y, p2->x-fw, p2->y, color);
+			fw--;
+		}
+	}
+
+	if(!fw)
+	{
+		GLCD_Line(p1->x, p1->y, p2->x, p1->y, color);      // Draw the outer border 4 sides
+		GLCD_Line(p1->x, p2->y, p2->x, p2->y, color);
+		GLCD_Line(p1->x, p1->y, p1->x, p2->y, color);
+		GLCD_Line(p2->x, p1->y, p2->x, p2->y, color);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw a rectangle/frame on a graphic LCD
+ * @param[in]	(x1, y1)     the start coordinate
+ *              (x2, y2)     the end coordinate
+ *              (x3, y3)     the end coordinate
+ *              fill         Fill Triangle TRUE/FALSE or ON/OFF
+ *              color        Boundary color
+ *              fill_color   Triangle Fill Color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Triangle(COORDINATE_Type *p1, COORDINATE_Type *p2, COORDINATE_Type *p3,COLORCFG_Type *cfg)
+{
+    if(cfg->fill)
+    {
+    	uint16_t t1x,t2x,y,minx,maxx,t1xp,t2xp;
+    	Bool changed1 = FALSE;
+    	Bool changed2 = FALSE;
+    	int16_t signx1,signx2,dx1,dy1,dx2,dy2;
+    	uint16_t e1,e2;
+        // Sort vertices
+    	if (p1->y > p2->y) { SWAP(p1->y,p2->y); SWAP(p1->x,p2->x); }
+    	if (p1->y > p3->y) { SWAP(p1->y,p3->y); SWAP(p1->x,p3->x); }
+    	if (p2->y > p3->y) { SWAP(p2->y,p3->y); SWAP(p2->x,p3->x); }
+
+    	t1x=t2x=p1->x; y=p1->y;   // Starting points
+
+    	dx1 = (int16_t)(p2->x - p1->x);
+    	if(dx1<0) { dx1=-dx1; signx1=-1; } else signx1=1;
+    	dy1 = (int16_t)(p2->y - p1->y);
+
+    	dx2 = (int8_t)(p3->x - p1->x);
+    	if(dx2<0) { dx2=-dx2; signx2=-1; } else signx2=1;
+    	dy2 = (int8_t)(p3->y - p1->y);
+
+    	if (dy1 > dx1)
+    	{   // swap values
+            SWAP(dx1,dy1);
+    		changed1 = TRUE;
+    	}
+    	if (dy2 > dx2)
+    	{   // swap values
+            SWAP(dy2,dx2);
+    		changed2 = TRUE;
+    	}
+
+    	e2 = (uint16_t)(dx2>>1);
+        // Flat top, just process the second half
+        if(p1->y==p2->y) goto next;
+        e1 = (uint16_t)(dx1>>1);
+
+    	for (uint8_t i = 0; i < dx1;)
+    	{
+    		t1xp=0; t2xp=0;
+    		if(t1x<t2x) { minx=t1x; maxx=t2x; }
+    		else		{ minx=t2x; maxx=t1x; }
+            // process first line until y value is about to change
+    		while(i<dx1)
+    		{
+    			i++;
+    			e1 += dy1;
+    	   	   	while (e1 >= dx1)
+    	   	   	{
+    				e1 -= dx1;
+       	   	   	   if (changed1) t1xp=signx1;//t1x += signx1;
+    				else          goto next1;
+    			}
+    			if (changed1) break;
+    			else t1x += signx1;
+    		}
+    	// Move line
+    	next1:
+            // process second line until y value is about to change
+    		while (1)
+    		{
+    			e2 += dy2;
+    			while (e2 >= dx2)
+    			{
+    				e2 -= dx2;
+    				if (changed2) t2xp=signx2;//t2x += signx2;
+    				else          goto next2;
+    			}
+    			if (changed2)     break;
+    			else              t2x += signx2;
+    		}
+    	next2:
+    		if(minx>t1x) minx=t1x; if(minx>t2x) minx=t2x;
+    		if(maxx<t1x) maxx=t1x; if(maxx<t2x) maxx=t2x;
+    		GLCD_Line(minx,y,maxx,y,cfg->fill_color);    // Draw line from min to max points found on the y
+
+    		// Now increase y
+    		if(!changed1) t1x += signx1;
+    		t1x+=t1xp;
+    		if(!changed2) t2x += signx2;
+    		t2x+=t2xp;
+        	y += 1;
+    		if(y==p2->y) break;
+       }
+    	next:
+    	// Second half
+    	dx1 = (int8_t)(p3->x - p2->x); if(dx1<0) { dx1=-dx1; signx1=-1; } else signx1=1;
+    	dy1 = (int8_t)(p3->y - p2->y);
+    	t1x=p2->x;
+
+    	if (dy1 > dx1)
+    	{   // swap values
+            SWAP(dy1,dx1);
+    		changed1 = TRUE;
+    	} else changed1=FALSE;
+
+    	e1 = (uint8_t)(dx1>>1);
+
+    	for (uint8_t i = 0; i<=dx1; i++)
+    	{
+    		t1xp=0; t2xp=0;
+    		if(t1x<t2x) { minx=t1x; maxx=t2x; }
+    		else		{ minx=t2x; maxx=t1x; }
+    	    // process first line until y value is about to change
+    		while(i<dx1)
+    		{
+        		e1 += dy1;
+    	   	   	while (e1 >= dx1)
+    	   	   	{
+    				e1 -= dx1;
+       	   	   	   	if (changed1) { t1xp=signx1; break; }//t1x += signx1;
+    				else          goto next3;
+    			}
+    			if (changed1) break;
+    			else   	   	  t1x += signx1;
+    			if(i<dx1) i++;
+    		}
+    	next3:
+            // process second line until y value is about to change
+    		while (t2x!=p3->x)
+    		{
+    			e2 += dy2;
+    	   	   	while (e2 >= dx2)
+    	   	   	{
+    				e2 -= dx2;
+    				if(changed2) t2xp=signx2;
+    				else          goto next4;
+    			}
+    			if (changed2)     break;
+    			else              t2x += signx2;
+    		}
+    	next4:
+
+    		if(minx>t1x) minx=t1x; if(minx>t2x) minx=t2x;
+    		if(maxx<t1x) maxx=t1x; if(maxx<t2x) maxx=t2x;
+    		GLCD_Line(minx,y,maxx,y,cfg->fill_color);    // Draw line from min to max points found on the y
+    		// Now increase y
+    		if(!changed1) t1x += signx1;
+    		t1x+=t1xp;
+    		if(!changed2) t2x += signx2;
+    		t2x+=t2xp;
+        	y += 1;
+    		if(y>p3->y) break;
+    	}
+    	cfg->fill = NO;
+    }
+
+
+	if(!cfg->fill && cfg->bndry)
+	{
+		GLCD_Line(p1->x, p1->y, p2->x, p2->y, cfg->bcolor);
+		GLCD_Line(p1->x, p1->y, p3->x, p3->y, cfg->bcolor);
+		GLCD_Line(p2->x, p2->y, p3->x, p3->y, cfg->bcolor);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw a Circle with given Center and Radius
+ * @param[in]	(x, y)     the center of the circle
+ *              radius     the radius of the circle
+ *              fill       YES or NO
+ *              color      Boundary color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Circle(int16_t x, int16_t y, int16_t radius,COLORCFG_Type *cfg)
+{
+	int16_t a, b, P;
+	a = 0;
+	b = radius;
+	P = 1 - radius;
+
+	do
+	{
+		if(cfg->fill)
+		{
+			GLCD_Line(x-a, y+b, x+a, y+b, cfg->fill_color);
+			GLCD_Line(x-a, y-b, x+a, y-b, cfg->fill_color);
+			GLCD_Line(x-b, y+a, x+b, y+a, cfg->fill_color);
+			GLCD_Line(x-b, y-a, x+b, y-a, cfg->fill_color);
+		}
+
+		if(P < 0)
+			P+= 3 + 2*a++;
+		else
+			P+= 5 + 2*(a++ - b--);
+	} while(a <= b);
+
+	cfg->fill = NO;
+	a = 0;
+	b = radius;
+	P = 1 - radius;
+	do
+	{
+		if(!cfg->fill && cfg->bndry)
+		{
+			GLCD_PutPixel(a+x, b+y, cfg->bcolor);
+			GLCD_PutPixel(b+x, a+y, cfg->bcolor);
+			GLCD_PutPixel(x-a, b+y, cfg->bcolor);
+			GLCD_PutPixel(x-b, a+y, cfg->bcolor);
+			GLCD_PutPixel(b+x, y-a, cfg->bcolor);
+			GLCD_PutPixel(a+x, y-b, cfg->bcolor);
+			GLCD_PutPixel(x-a, y-b, cfg->bcolor);
+			GLCD_PutPixel(x-b, y-a, cfg->bcolor);
+		}
+
+		if(P < 0)
+			P+= 3 + 2*a++;
+		else
+			P+= 5 + 2*(a++ - b--);
+	} while(a <= b);
+}
+
+
+/*********************************************************************//**
+ * @brief	    Write text on a graphic LCD
+ * @param[in]	(x,y)      The upper left coordinate of the first letter
+ *              textptr    A pointer to an array of text to display
+ *              row        Number of rows of pixels
+ *              col        Number of Colums of pixels
+ *              font       font 2 dimentional array
+ *              size       The size of the text: 1 = 5x7, 2 = 10x14, ...
+ *              color      font color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Text(int16_t x, int16_t y, int8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color)
+{
+   int16_t i, j, k, l, m;                     // Loop counters
+   int8_t pixelData[row];                     // Stores character data
+
+   for(i=0; i<length; ++i, ++x) // Loop through the passed string
+   {
+      memcpy(pixelData, font[textptr[i]-' '], row);
+
+      if(x+row*size >= 320)          // Performs character wrapping
+      {
+         x = 0;                           // Set x at far left position
+         y += row*size + 1;                 // Set y at next position down
+      }
+      for(j=0; j<row; ++j, x+=size)         // Loop through character byte data
+      {
+         for(k=0; k<col*size; ++k)          // Loop through the vertical pixels
+         {
+            if(bit_test(pixelData[j], k)) // Check if the pixel should be set
+            {
+               for(l=0; l<size; ++l)      // The next two loops change the
+               {                          // character's size
+                  for(m=0; m<size; ++m)
+                  {
+                     GLCD_PutPixel(x+m, y+k*size+l, color); // Draws the pixel
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
+
+/*********************************************************************//**
+ * @brief		Modified version of Standard Printf statement
+ *
+ * @par			Supports standard formats "%c %s %d %x"
+ * 				"%d" and "%x" requires non-standard qualifiers,"%dfn, %xfn":-
+ *		        f supplies a fill character
+ *		        n supplies a field width
+ *
+ *		        ENABLE RTC_SUPPORT in lpc17xx_uart.h for RTC Features
+ *
+ *				Supports custom formats  "%b  %u %t %y %a"
+ *				"%b"	prints a 2 digit BCD value with leading zero
+ *				"%u"	prints the 16 bit unsigned integer in hex format
+ *				"%t"    prints current time
+ *				"%y"    prints current date
+ *				"%a"    prints alarm time and date
+ * @param[in]	UARTx	Selected UART peripheral used to send data,
+ * 				should be:
+ *  			- LPC_UART0: UART0 peripheral
+ * 				- LPC_UART1: UART1 peripheral
+ * 				- LPC_UART2: UART2 peripheral
+ * 				- LPC_UART3: UART3 peripheral
+ * @param[in] 	*format Character format
+ * @param[in]   ...  <multiple argument>
+ *
+ * @return 		return with valid character or nothing
+ **********************************************************************/
+int16 gprintf(int16_t x, int16_t y, int8_t size, uint16_t color, const char *format, ...)
+{
+	uchar hex[]= "0123456789ABCDEF";
+	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000};
+	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000, 0x10000, 0x100000, 0x1000000, 0x10000000};
+	unsigned int temp;
+
+	schar format_flag, fill_char;
+	ulong32 u_val, div_val;
+	uint16 base;
+
+	schar *ptr;
+#ifdef RTC_MODE
+	RTC_TIME_Type FullTime;
+#endif
+	va_list ap;
+	va_start(ap, format);
+
+	for(;;)
+	{
+		while((format_flag = *format++) != '%')      // until full format string read
+		{
+			if(!format_flag)
+			{                        // until '%' or '\0'
+				return (0);
+			}
+
+		    if(x+5*size >= 320)          // Performs character wrapping
+		    {
+		       x = 0;                           // Set x at far left position
+		       y += 7*size + 1;                 // Set y at next position down
+		    }
+			GLCD_Text(x,y,&format_flag,1,5,7,default5x7,size,color);
+			x=x+5*size+1;
+		}
+
+		switch(format_flag = *format++)
+		{
+			case 'c':
+				format_flag = va_arg(ap, int);
+			    if(x+5*size >= 320)          // Performs character wrapping
+			    {
+			       x = 0;                           // Set x at far left position
+			       y += 7*size + 1;                 // Set y at next position down
+			    }
+				GLCD_Text(x,y,&format_flag,1,5,7,default5x7,size,color);
+				x=x+5*size+1;
+
+				continue;
+
+			default:
+			    if(x+5*size >= 320)          // Performs character wrapping
+			    {
+			       x = 0;                           // Set x at far left position
+			       y += 7*size + 1;                 // Set y at next position down
+			    }
+				GLCD_Text(x,y,&format_flag,1,5,7,default5x7,size,color);
+				x=x+5*size+1;
+
+        		continue;
+
+			case 'b':
+				format_flag = va_arg(ap,int);
+			    if(x+5*size >= 320)          // Performs character wrapping
+			    {
+			       x = 0;                           // Set x at far left position
+			       y += 7*size + 1;                 // Set y at next position down
+			    }
+				GLCD_Text(x,y,&(hex[(uint16)format_flag >> 4]),1,5,7,default5x7,size,color);
+				x=x+5*size+1;
+			    if(x+5*size >= 320)          // Performs character wrapping
+			    {
+			       x = 0;                           // Set x at far left position
+			       y += 7*size + 1;                 // Set y at next position down
+			    }
+				GLCD_Text(x,y,&(hex[(uint16)format_flag & 0x0F]),1,5,7,default5x7,size,color);
+				x=x+5*size+1;
+
+				continue;
+
+			case 's':
+				ptr = va_arg(ap, schar *);
+				while(*ptr)
+				{
+				    if(x+5*size >= 320)          // Performs character wrapping
+				    {
+				       x = 0;                           // Set x at far left position
+				       y += 7*size + 1;                 // Set y at next position down
+				    }
+					GLCD_Text(x,y,&(*ptr++),1,5,7,default5x7,size,color);
+					x=x+5*size+1;
+				}
+
+				continue;
+#ifdef RTC_MODE
+			case 't':
+				RTC_GetFullTime (LPC_RTC, &FullTime);
+			    gprintf(x,y,size,color, "%d02:%d02:%d02",FullTime.HOUR,FullTime.MIN,FullTime.SEC);
+
+				continue;
+
+			case 'y':
+				RTC_GetFullTime (LPC_RTC, &FullTime);
+			    gprintf(x,y,size,color, "%d02/%d02/%d04",FullTime.DOM,FullTime.MONTH,FullTime.YEAR);
+
+				continue;
+
+			case 'a':
+				RTC_GetFullAlarmTime (LPC_RTC, &FullTime);
+				gprintf(x,y,size,color, "Time: %d02:%d02:%d02",FullTime.HOUR,FullTime.MIN,FullTime.SEC);
+				gprintf(x,y,size,color, "  Date: %d02/%d02/%d04",FullTime.DOM,FullTime.MONTH,FullTime.YEAR);
+
+				continue;
+#endif
+			case 'u':
+				base = 16;
+				div_val = 0x100000;
+				u_val = va_arg(ap, uint32_t);
+				do
+				{
+				    if(x+5*size >= 320)          // Performs character wrapping
+				    {
+				       x = 0;                           // Set x at far left position
+				       y += 7*size + 1;                 // Set y at next position down
+				    }
+					GLCD_Text(x,y,&(hex[u_val/div_val]),1,5,7,default5x7,size,color);
+					x=x+5*size+1;
+					u_val %= div_val;
+					div_val /= base;
+				}while(div_val);
+
+				continue;
+
+			case 'd':
+				base = 10;
+				fill_char = *format++;
+				format_flag = ( *format++ ) - '1';
+				div_val = width_dec[format_flag];
+				u_val = va_arg(ap,int);
+
+				if(((int)u_val) < 0)
+				{
+					u_val = - u_val;    // applied to unsigned type, result still unsigned
+					temp = '-';
+				    if(x+5*size >= 320)          // Performs character wrapping
+				    {
+				       x = 0;                           // Set x at far left position
+				       y += 7*size + 1;                 // Set y at next position down
+				    }
+				    GLCD_Text(x,y,&temp,1,5,7,default5x7,size,color);
+				    x=x+5*size+1;
+				}
+
+				goto  CONVERSION_LOOP;
+
+			case 'x':
+				base = 16;
+				fill_char = *format++;
+				format_flag = (*format++) - '1';
+				div_val = width_hex[format_flag];
+				u_val = va_arg(ap, int);
+
+				CONVERSION_LOOP:
+				while(div_val > 1 && div_val > u_val)
+				{
+					div_val /= base;
+				    if(x+5*size >= 320)          // Performs character wrapping
+				    {
+				       x = 0;                           // Set x at far left position
+				       y += 7*size + 1;                 // Set y at next position down
+				    }
+					GLCD_Text(x,y,&fill_char,1,5,7,default5x7,size,color);
+					x=x+5*size+1;
+				}
+
+				do
+				{
+				    if(x+5*size >= 320)          // Performs character wrapping
+				    {
+				       x = 0;                           // Set x at far left position
+				       y += 7*size + 1;                 // Set y at next position down
+				    }
+					GLCD_Text(x,y,&(hex[u_val/div_val]),1,5,7,default5x7,size,color);
+					x=x+5*size+1;
+					u_val %= div_val;
+					div_val /= base;
+				}while(div_val);
+		}// end of switch statement
+	}
+	return(0);
+}
+
+
+/*********************************************************************//**
+ * @brief	    Clear Given length of Characters
+ * @param[in]	x        horizontal position
+ *              y        vertical position
+ *              size     font size multiply by 5x7 fonts
+ *              length   length of string
+ *              color    Erase color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Erase(uint16_t x, uint16_t y, int8_t size, uint16_t length, uint16_t color)
+{
+    if(x+6*size >= 320)          // Performs character wrapping
+    {
+       x = 0;                           // Set x at far left position
+       y += 7*size + 1;                 // Set y at next position down
+    }
+	GLCD_Window_Fill(x,y,(6*size*length)+1,(7*size)+1,color);
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw Bar for Bar Graph (Dependent on Bar Graph Test)
+ * @param[in]	index      Bar Number (from 1 to 10)
+ *              width      Bar width
+ *              per        Percentage height
+ *              color      Bar Color
+ * @return 		None
+ **********************************************************************/
+void GLCD_Bar(int16_t index,uint8_t width,int16_t per,uint16_t color)
+{
+	/**************************************************************************
+	 * Par1 : const 30 indicates  ref distance line. 28 indicates spacing between
+	 * two bar graphs at multiples of 28, now as the center of bar is located
+	 * half of width should be left and other half on right, so after subracting
+	 * half width from center we get x point of bar.
+	 * Par2 : 220 is Y ref line so (220 - bar heigth) will give y point of bar.
+	 * Par4 : per*2 is scaling for 200 pixels for 100 percentage heigth.
+	 **************************************************************************/
+	if((per<=100) && (index<=10))
+	{
+		GLCD_Window_Fill(30+(index*26)-(width-(width/2)),220-(per*2),width,per*2,color);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Draw Line Bar for Bar Graph (Dependent on Bar Graph Test)
+ * @param[in]	index      Bar Number (from 1 to 10)
+ *              width      Bar width
+ *              y          y_reference for bar
+ *              per        Percentage height
+ *              dec        decrement bar YES/NO or TRUE/FALSE
+ *              color      Bar Color
+ * @return 		None
+ **********************************************************************/
+void GLCD_LBar(int16_t index, uint8_t width, int16_t y, int16_t per, Bool dec,uint16_t color)
+{
+	int16_t x1,x2,h,y_diff;
+
+	if(dec)
+	{
+		y_diff=y+(per);
+	}
+	else
+	{
+		y_diff=y-(per);
+	}
+
+	if((y_diff>=20) && (index<=10) && !dec)
+	{
+		for(h=0;h<=per;h++)
+		{
+			x1 = 30+(index*26)-(width-(width/2));
+			x2 = x1+width;
+			GLCD_Line(x1,y-h,x2,y-h,color);
+		}
+	}
+	else if(dec && (y_diff<=219) && (index<=10))
+	{
+		for(h=0;h<=per;h++)
+		{
+			x1 = 30+(index*26)-(width-(width/2));
+			x2 = x1+width;
+			GLCD_Line(x1,y+h,x2,y+h,color);
+		}
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Display Bar Graph function
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void Show_BarGraph(void)
+{
+	COORDINATE_Type point1,point2,point3;
+	COLORCFG_Type tricfg;
+    uint16_t y_scale,x_scale,i;
+
+	// X and Y lines
+	GLCD_Line(30,5,30,238,Black);
+	GLCD_Line(1,220,315,220,Black);
+
+	gprintf(22,5,1,Black,"Y");
+	gprintf(310,225,1,Black,"X");
+	gprintf(50,5,1,Black,"X=ADC-CH  Y=VAL  Y-MAX=4095  Y-UNIT=40.95");
+
+	// Y Line Arrows Top and Bottom
+	// Top arrow coordinates
+	point1.x = 30;
+	point1.y = 5;
+	point2.x = 28;
+	point2.y = 10;
+	point3.x = 32;
+	point3.y = 10;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// Bottom arrow coordinates
+	point1.x = 30;
+	point1.y = 238;
+	point2.x = 28;
+	point2.y = 233;
+	point3.x = 32;
+	point3.y = 233;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// X Line Arrows Left and Right
+	// Left arrow coordinates
+	point1.x = 1;
+	point1.y = 220;
+	point2.x = 6;
+	point2.y = 218;
+	point3.x = 6;
+	point3.y = 222;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// Right arrow coordinates
+	point1.x = 315;
+	point1.y = 220;
+	point2.x = 310;
+	point2.y = 218;
+	point3.x = 310;
+	point3.y = 222;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// X and Y scaling
+	gprintf(0,225,1,Black,"(0,0)");
+	for(y_scale=200,i=1; y_scale>=20; y_scale=y_scale-20,i++)
+	{
+		if(y_scale!=20)
+		{
+			gprintf(14,y_scale,1,Black,"%d02",i*10);
+		}
+		else
+		{
+			gprintf(10,y_scale,1,Black,"%d03",i*10);
+		}
+
+	}
+	for(x_scale=56,i=1; x_scale<=300; x_scale=x_scale+26,i++)
+	{
+		gprintf(x_scale,225,1,Black,"%d02",i);
+	}
+}
+
+
+/*********************************************************************//**
+ * @brief	    Display Bar Graph function
+ * @param[in]	None
+ * @return 		None
+ **********************************************************************/
+void Show_BarGraph_VI(void)
+{
+	COORDINATE_Type point1,point2,point3;
+	COLORCFG_Type tricfg;
+    uint16_t y_scale,x_scale,i;
+
+	// X and Y lines
+	GLCD_Line(30,5,30,238,Black);
+	GLCD_Line(1,220,315,220,Black);
+
+	gprintf(22,5,1,Black,"Y");
+	gprintf(310,225,1,Black,"X");
+	gprintf(50,5,1,Black,"X=T  Y=V");
+
+	// Y Line Arrows Top and Bottom
+	// Top arrow coordinates
+	point1.x = 30;
+	point1.y = 5;
+	point2.x = 28;
+	point2.y = 10;
+	point3.x = 32;
+	point3.y = 10;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// Bottom arrow coordinates
+	point1.x = 30;
+	point1.y = 238;
+	point2.x = 28;
+	point2.y = 233;
+	point3.x = 32;
+	point3.y = 233;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// X Line Arrows Left and Right
+	// Left arrow coordinates
+	point1.x = 1;
+	point1.y = 220;
+	point2.x = 6;
+	point2.y = 218;
+	point3.x = 6;
+	point3.y = 222;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// Right arrow coordinates
+	point1.x = 315;
+	point1.y = 220;
+	point2.x = 310;
+	point2.y = 218;
+	point3.x = 310;
+	point3.y = 222;
+	tricfg.fill = YES;
+	tricfg.bndry= NO;
+	tricfg.fill_color=Black;
+	GLCD_Triangle(&point1,&point2,&point3,&tricfg);
+
+	// X and Y scaling
+	gprintf(0,225,1,Black,"(0,0)");
+	for(y_scale=200,i=1; y_scale>=20; y_scale=y_scale-20,i++)
+	{
+		if(y_scale!=20)
+		{
+			gprintf(14,y_scale,1,Black,"%d02",i*10);
+		}
+		else
+		{
+			gprintf(10,y_scale,1,Black,"%d03",i*10);
+		}
+
+	}
+	for(x_scale=56,i=1; x_scale<=300; x_scale=x_scale+26,i++)
+	{
+		if(x_scale<290)
+		{
+			gprintf(x_scale,225,1,Black,"%d02",i*10);
+		}
+		else
+		{
+			gprintf(x_scale-5,225,1,Black,"%d03",i*10);
+		}
+	}
+}
+
+
+/*********************************************************************//**
  * @brief	    This function writes commands to the GLCD
  * @param[in]	Command		command to be written on GLCD
  * @return 		status
@@ -593,6 +1501,7 @@ uchar Write_Command_Glcd (uint8_t Command)
 {
 	SSP_DATA_SETUP_Type xferConfig;
 	uint8_t WriteStatus =0;
+	__IO uint32_t i;
 
 	GPIO_ClearValue(2, LCD_RS);  //select command mode
 
@@ -605,7 +1514,7 @@ uchar Write_Command_Glcd (uint8_t Command)
 	if(WriteStatus)
 	{
 		CS_Force1 (LPC_SSP1, ENABLE);                          /* CS high inactive        */
-		delay_ms(4);
+		for(i=925; i>0; i--);
 		GPIO_SetValue(2, LCD_RS);  // select data mode
 		return(1);
 	}
@@ -642,26 +1551,6 @@ uchar Write_Data_Glcd (uint16_t data)
 	}
 	else
 		return(0);
-}
-
-
-/*********************************************************************//**
- * @brief	    This function Displays RGB
- * @param[in]	data   Enter color data
- * @return 		None
- **********************************************************************/
-void Display_RGB (uint16_t data)
-{
-	uint16_t i,j;
-	GLCD_Display_Home();
-
-	for(i=0;i<320;i++)
-	{
-		for(j=0;j<240;j++)
-		{
-			Write_Data_Glcd(data);
-		}
-	}
 }
 
 

@@ -31,7 +31,7 @@
 /* Includes ------------------------------------------------------------------- */
 #include "LPC17xx.h"
 #include "lpc_system_init.h"
-
+#include "stdarg.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -94,6 +94,22 @@ typedef enum {
 } DRIVER_OUT_Type;
 
 
+/* Coordinate Type */
+typedef struct
+{
+	int16_t x;
+	int16_t y;
+}COORDINATE_Type;
+
+/* Color Config Type */
+typedef struct
+{
+	Bool fill;
+	Bool bndry;
+	uint16_t bcolor;
+	uint16_t fill_color;
+}COLORCFG_Type;
+
 /**
  * @}
  */
@@ -107,23 +123,35 @@ typedef enum {
 void GLCD_Backlight (FunctionalState NewState);
 void GLCD_Reset(void);
 void GLCD_Driver_OutCtrl(DRIVER_OUT_Type drv);
+void GLCD_Set_Loc (uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 void GLCD_Display_Home (void);
 void GLCD_Init (void);
-void GLCD_WindowMax(void);
-void GLCD_PutPixel(unsigned int x, unsigned int y);
-void GLCD_SetTextColor (unsigned short color);
-void GLCD_SetBackColor (unsigned short color);
-void GLCD_Clear (unsigned short color);
-void GLCD_DrawChar (unsigned int x, unsigned int y, unsigned short *c);
-void GLCD_DisplayChar (unsigned int ln, unsigned int col, unsigned char  c);
-void GLCD_DisplayString (unsigned int ln, unsigned int col, unsigned char *s);
-void GLCD_ClearLn (unsigned int ln);
-void GLCD_Bargraph (unsigned int x, unsigned int y, unsigned int w, unsigned int h, unsigned int val);
-void GLCD_Bitmap (unsigned int x, unsigned int y, unsigned int w, unsigned int h, uint16_t *bitmap);
+void GLCD_Window (uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+void GLCD_PutPixel (uint16_t x, uint16_t y, uint16_t color);
+void GLCD_SetTextColor (uint16_t color);
+void GLCD_SetBackColor (uint16_t color);
+void GLCD_Clear (uint16_t color);
+void GLCD_Draw_Char (uint16_t x, uint16_t y, uint16_t *c);
+void GLCD_Display_Char (uint16_t ln, uint16_t col, uchar  c);
+void GLCD_Display_String (uint16_t ln, uint16_t col, uchar *s);
+void GLCD_ClearLn (uint16_t ln);
+void GLCD_Bitmap (uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t *bitmap);
+void GLCD_Window_Fill (uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
+void GLCD_Line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color);
+void GLCD_Rect(COORDINATE_Type *p1, COORDINATE_Type *p2, Bool fill, uint16_t color, uint16_t fill_color);
+void GLCD_Frame(COORDINATE_Type *p1, COORDINATE_Type *p2, int16_t frame_width, uint16_t color, uint16_t fill_color);
+void GLCD_Triangle(COORDINATE_Type *p1, COORDINATE_Type *p2, COORDINATE_Type *p3,COLORCFG_Type *cfg);
+void GLCD_Circle(int16_t x, int16_t y, int16_t radius,COLORCFG_Type *cfg);
+void GLCD_Text(int16_t x, int16_t y, int8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color);
+int16 gprintf(int16_t x, int16_t y, int8_t size, uint16_t color, const char *format, ...);
+void GLCD_Erase(uint16_t x, uint16_t y, int8_t size, uint16_t length, uint16_t color);
+void GLCD_Bar(int16_t index,uint8_t width,int16_t per,uint16_t color);
+void GLCD_LBar(int16_t index, uint8_t width, int16_t y, int16_t per, Bool dec,uint16_t color);
+void Show_BarGraph(void);
+void Show_BarGraph_VI(void);
 
 uchar Write_Command_Glcd (uint8_t Command);
 uchar Write_Data_Glcd (uint16_t data);
-void Display_RGB (uint16_t data);
 
 
 /**
