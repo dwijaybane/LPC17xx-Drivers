@@ -38,22 +38,43 @@
 /* Peripherals Include----------------------------------------------------------*/
 #include "lpc17xx_systick.h"
 #include "lpc17xx_gpio.h"
-#include "lpc17xx_uart.h"
 #include "lpc17xx_wdt.h"
+#include "lpc17xx_uart.h"
+#include "lpc17xx_ssp.h"
+#include "lpc17xx_i2c.h"
+#include "lpc_i2c_tsc2004.h"
+#include "lpc_ssp_glcd.h"
+
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-
-/* Global Variables ----------------------------------------------------------- */
-/** @defgroup Global_Variables Global Variables
+/** @addtogroup GLOBAL_Variables
  * @{
  */
-/* systick */
-extern uint32_t led_delay;
 
+/************************** GLOBAL VARIABLES *************************/
+/**
+ *  Systick
+ */
+extern uint32_t led_delay;
+extern uchar status;
+
+/**
+ *  Lcd Custom Patterns
+ */
+//extern uchar Character1[8];
+
+
+
+
+
+
+/**
+ * @}
+ */
 
 /* Public Functions ----------------------------------------------------------- */
 /** @defgroup SYSTEM_INIT_Public_Functions SYSTEM_INIT Public Functions
