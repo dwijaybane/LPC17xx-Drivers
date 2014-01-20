@@ -39,6 +39,8 @@ extern "C"
 #endif
 
 
+
+
 /* Public Macros -------------------------------------------------------------- */
 /** @defgroup GLCD_Public_Macros
  * @{
@@ -46,7 +48,6 @@ extern "C"
 #define LCD_RS 		(1<<0)  //port2
 #define	LCD_RST		(1<<5)	//port0
 #define LCD_BK		(1<<8)	//port2
-
 
 /*------------------------------------------------------------------------------
   Color coding
@@ -93,6 +94,16 @@ typedef enum {
 	BOTTOM_RIGHT
 } DRIVER_OUT_Type;
 
+/* Special Keys */
+typedef enum {
+	CAPS = 1,
+	BK_SPACE = 2,
+	KEY1 = 3,
+	KEY2 = 4,
+	KEY3 = 5,
+	CR = 6,
+	GLOBE = 7
+} KEY_Type;
 
 /* Coordinate Type */
 typedef struct
@@ -142,8 +153,13 @@ void GLCD_Rect(COORDINATE_Type *p1, COORDINATE_Type *p2, Bool fill, uint16_t col
 void GLCD_Frame(COORDINATE_Type *p1, COORDINATE_Type *p2, int16_t frame_width, uint16_t color, uint16_t fill_color);
 void GLCD_Triangle(COORDINATE_Type *p1, COORDINATE_Type *p2, COORDINATE_Type *p3,COLORCFG_Type *cfg);
 void GLCD_Circle(int16_t x, int16_t y, int16_t radius,COLORCFG_Type *cfg);
-void GLCD_Text(int16_t x, int16_t y, int8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color);
+void GLCD_Text(int16_t x, int16_t y, uint8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color);
 int16 gprintf(int16_t x, int16_t y, int8_t size, uint16_t color, const char *format, ...);
+schar GLCD_Getche(void);
+schar Keyboard1(uint16_t x, uint16_t y);
+schar Keyboard2(uint16_t x, uint16_t y);
+schar Keyboard3(uint16_t x, uint16_t y);
+uchar GLCD_Get_Line(schar s[], uint8_t lim);
 void GLCD_Erase(uint16_t x, uint16_t y, int8_t size, uint16_t length, uint16_t color);
 void GLCD_Bar(int16_t index,uint8_t width,int16_t per,uint16_t color);
 void GLCD_LBar(int16_t index, uint8_t width, int16_t y, int16_t per, Bool dec,uint16_t color);

@@ -30,7 +30,9 @@
 #include "math.h"
 #include "Font_24x16.h"
 #include "Font_5x7.h"
-
+#include "key1.h"
+#include "key2.h"
+#include "key3.h"
 
 /* If this source file built with example, the LPC17xx FW library configuration
  * file in each example directory ("lpc17xx_libcfg.h") must be included,
@@ -962,10 +964,10 @@ void GLCD_Circle(int16_t x, int16_t y, int16_t radius,COLORCFG_Type *cfg)
  *              color      font color
  * @return 		None
  **********************************************************************/
-void GLCD_Text(int16_t x, int16_t y, int8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color)
+void GLCD_Text(int16_t x, int16_t y, uint8_t* textptr, uint16_t length, uint8_t row, uint8_t col, int8_t (*font)[row], int8_t size, uint16_t color)
 {
    int16_t i, j, k, l, m;                     // Loop counters
-   int8_t pixelData[row];                     // Stores character data
+   uint8_t pixelData[row];                     // Stores character data
 
    for(i=0; i<length; ++i, ++x) // Loop through the passed string
    {
@@ -1030,11 +1032,11 @@ int16 gprintf(int16_t x, int16_t y, int8_t size, uint16_t color, const char *for
 	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000, 0x10000, 0x100000, 0x1000000, 0x10000000};
 	unsigned int temp;
 
-	schar format_flag, fill_char;
+	uchar format_flag, fill_char;
 	ulong32 u_val, div_val;
 	uint16 base;
 
-	schar *ptr;
+	uchar *ptr;
 #ifdef RTC_MODE
 	RTC_TIME_Type FullTime;
 #endif
@@ -1213,6 +1215,692 @@ int16 gprintf(int16_t x, int16_t y, int8_t size, uint16_t color, const char *for
 		}// end of switch statement
 	}
 	return(0);
+}
+
+
+schar GLCD_Getche(void)
+{
+	schar key=0;
+	ts_event ts;
+	uint16_t x,y;
+	Bool flag = 0,up=1;
+
+	uint16_t good_state = 0;
+	uint16_t adc_state = 0;
+    uint16_t temp;
+
+	while(1)
+	{
+		good_state = 0;
+		adc_state = 0;
+
+		while (good_state<3)          // while less that 3 good samples
+		{
+			TSC2004_Read_Values (&ts);
+
+			x = (uint16_t)((ts.x)/11)-24;
+		   	y = (uint16_t)((ts.y)/13)-36;
+
+		   	temp = x;
+		   	if (adc_state == temp)
+		   	{
+		   		good_state++;
+		   	}
+		   	else
+		   	{
+		   		good_state = 0;
+		   	}
+
+		   	adc_state = temp;
+		}
+		x = adc_state;               //Sampled X value
+
+		switch(keybd)
+		{
+		case KEY1:
+			if(!flag)
+			{
+				GLCD_Bitmap(0,133,320,107,key1);
+				flag = 1;
+			}
+			key = Keyboard1(x,y);
+			break;
+
+		case KEY2:
+			if(!flag)
+			{
+				GLCD_Bitmap(0,133,320,107,key2);
+				flag = 1;
+			}
+			key = Keyboard2(x,y);
+			break;
+
+		case KEY3:
+			if(!flag)
+			{
+				GLCD_Bitmap(0,133,320,107,key3);
+				flag = 1;
+			}
+			key = Keyboard3(x,y);
+			break;
+		}
+
+		if(key == 0)
+		{
+			up = 0;    // pen up done now key can be pressed
+		}
+
+		if(key == KEY1 && !up)
+		{
+			flag = 0;
+			keybd = KEY1;
+			up = 1;
+		}
+		else if(key == KEY2 && !up)
+		{
+			flag = 0;
+			keybd = KEY2;
+			up = 1;
+		}
+		else if(key == KEY3 && !up)
+		{
+			flag = 0;
+			keybd = KEY3;
+			up = 1;
+		}
+
+		if((key!=KEY1) && (key!=KEY2) && (key!=KEY3) && key && !up)
+		{
+			return(key);
+		}
+	}
+}
+
+
+schar Keyboard1(uint16_t x, uint16_t y)
+{
+	schar key;
+
+	if(y>138 && y<159)
+	{
+		if(y>138 && y<154)
+		{
+			if(x>5 && x<23)
+			{
+				return 'q';
+			}
+			else if(x>33 && x<52)
+			{
+				return 'w';
+			}
+		}
+		if(y>141 && y<159)
+		{
+			if(x>64 && x<84)
+			{
+				return 'e';
+			}
+			else if(x>98 && x<120)
+			{
+				return 'r';
+			}
+			else if(x>133 && x<155)
+			{
+				return 't';
+			}
+			else if(x>168 && x<189)
+			{
+				return 'y';
+			}
+			else if(x>200 && x<220)
+			{
+				return 'u';
+			}
+			else if(x>231 && x<256)
+			{
+				return 'i';
+			}
+			else if(x>266 && x<289)
+			{
+				return 'o';
+			}
+			else if(x>300 && x<320)
+			{
+				return 'p';
+			}
+		}
+	}
+	else if(y>170 && y<192)
+	{
+		if(y>170 && y<188)
+		{
+			if(x>20 && x<40)
+			{
+				return 'a';
+			}
+			else if(x>50 && x<70)
+			{
+				return 's';
+			}
+		}
+
+		if(y>173 && y<192)
+		{
+			if(x>81 && x<103)
+			{
+				return 'd';
+			}
+			else if(x>115 && x<138)
+			{
+				return 'f';
+			}
+			else if(x>150 && x<172)
+			{
+				return 'g';
+			}
+			else if(x>184 && x<207)
+			{
+				return 'h';
+			}
+			else if(x>216 && x<238)
+			{
+				return 'j';
+			}
+			else if(x>249 && x<270)
+			{
+				return 'k';
+			}
+			else if(x>284 && x<304)
+			{
+				return 'l';
+			}
+		}
+	}
+	else if(y>197 && y<221)
+	{
+		if(x>3 && x<30 && y>197 && y<214)
+		{
+			key = CAPS;
+			return key; // CAPS FLAG
+		}
+
+		if(y>202 && y<221)
+		{
+			if(x>49 && x<70)
+			{
+				return 'z';
+			}
+			else if(x>82 && x<103)
+			{
+				return 'x';
+			}
+			else if(x>114 && x<139)
+			{
+				return 'c';
+			}
+			else if(x>148 && x<172)
+			{
+				return 'v';
+			}
+			else if(x>183 && x<205)
+			{
+				return 'b';
+			}
+			else if(x>216 && x<238)
+			{
+				return 'n';
+			}
+			else if(x>249 && x<270)
+			{
+				return 'm';
+			}
+			else if(x>290 && x<320)
+			{
+				key = BK_SPACE;
+				return key;  // Backspace flag
+			}
+		}
+	}
+	else if(x>5 && x<54 && y>230 && y<242)
+	{
+		key = KEY2;
+		return key; // Keyboard2 flag
+	}
+	else if(x>67 && x<252 && y>234 && y<250)
+	{
+		return ' ';
+	}
+	else if(x>265 && x<320 && y>231 && y<250)
+	{
+		key = CR;
+		return key;  // Carriage Return
+	}
+	return 0;
+}
+
+
+schar Keyboard2(uint16_t x, uint16_t y)
+{
+	schar key;
+
+	if(y>138 && y<161)
+	{
+		if(y>138 && y<158)
+		{
+			if(x>5 && x<25)
+			{
+				return '1';
+			}
+			else if(x>35 && x<55)
+			{
+				return '2';
+			}
+		}
+		if(y>141 && y<161)
+		{
+			if(x>68 && x<86)
+			{
+				return '3';
+			}
+			else if(x>99 && x<122)
+			{
+				return '4';
+			}
+			else if(x>132 && x<154)
+			{
+				return '5';
+			}
+			else if(x>165 && x<186)
+			{
+				return '6';
+			}
+			else if(x>198 && x<218)
+			{
+				return '7';
+			}
+			else if(x>229 && x<252)
+			{
+				return '8';
+			}
+			else if(x>263 && x<283)
+			{
+				return '9';
+			}
+			else if(x>295 && x<317)
+			{
+				return '0';
+			}
+		}
+	}
+	else if(y>168 && y<192)
+	{
+		if(y>168 && y<189)
+		{
+			if(x>5 && x<25)
+			{
+				return '-';
+			}
+			else if(x>35 && x<56)
+			{
+				return '/';
+			}
+		}
+
+		if(y>173 && y<192)
+		{
+			if(x>66 && x<88)
+			{
+				return ':';
+			}
+			else if(x>99 && x<122)
+			{
+				return ';';
+			}
+			else if(x>132 && x<155)
+			{
+				return '(';
+			}
+			else if(x>166 && x<187)
+			{
+				return ')';
+			}
+			else if(x>198 && x<218)
+			{
+				return '$';
+			}
+			else if(x>229 && x<251)
+			{
+				return '&';
+			}
+			else if(x>262 && x<283)
+			{
+				return '@';
+			}
+			else if(x>294 && x<317)
+			{
+				return '"';
+			}
+		}
+	}
+	else if(y>197 && y<221)
+	{
+		if(x>5 && x<35 && y>197 && y<215)
+		{
+			key = KEY3;
+			return key; // CAPS FLAG
+		}
+
+		if(y>202 && y<221)
+		{
+			if(x>52 && x<88)
+			{
+				return '.';
+			}
+			else if(x>96 && x<132)
+			{
+				return ',';
+			}
+			else if(x>142 && x<180)
+			{
+				return '?';
+			}
+			else if(x>189 && x<225)
+			{
+				return '!';
+			}
+			else if(x>235 && x<269)
+			{
+				return 0x27;   // ' single quote
+			}
+			else if(x>283 && x<317)
+			{
+				key = BK_SPACE;
+				return key;  // Backspace flag
+			}
+		}
+	}
+	else if(x>5 && x<57 && y>229 && y<242)
+	{
+		key = KEY1;
+		return key; // Keyboard2 flag
+	}
+	else if(x>69 && x<251 && y>234 && y<250)
+	{
+		return ' ';
+	}
+	else if(x>263 && x<318 && y>231 && y<250)
+	{
+		key = CR;
+		return key;  // Carriage Return
+	}
+	return 0;
+}
+
+
+schar Keyboard3(uint16_t x, uint16_t y)
+{
+	schar key;
+
+	if(y>138 && y<161)
+	{
+		if(y>138 && y<158)
+		{
+			if(x>5 && x<25)
+			{
+				return '[';
+			}
+			else if(x>35 && x<55)
+			{
+				return ']';
+			}
+		}
+		if(y>141 && y<161)
+		{
+			if(x>65 && x<87)
+			{
+				return '{';
+			}
+			else if(x>97 && x<122)
+			{
+				return '}';
+			}
+			else if(x>131 && x<155)
+			{
+				return '#';
+			}
+			else if(x>164 && x<187)
+			{
+				return '%';
+			}
+			else if(x>197 && x<219)
+			{
+				return '^';
+			}
+			else if(x>230 && x<254)
+			{
+				return '*';
+			}
+			else if(x>261 && x<282)
+			{
+				return '+';
+			}
+			else if(x>295 && x<317)
+			{
+				return '=';
+			}
+		}
+	}
+	else if(y>168 && y<192)
+	{
+		if(y>168 && y<189)
+		{
+			if(x>5 && x<25)
+			{
+				return '_';
+			}
+			else if(x>35 && x<56)
+			{
+				return 0x5C; // '\' backslash
+			}
+		}
+
+		if(y>173 && y<192)
+		{
+			if(x>64 && x<86)
+			{
+				return '|';
+			}
+			else if(x>97 && x<122)
+			{
+				return '~';
+			}
+			else if(x>131 && x<155)
+			{
+				return '<';
+			}
+			else if(x>164 && x<187)
+			{
+				return '>';
+			}
+			else if(x>198 && x<219)
+			{
+				return 0x7F;  // pound symbol
+			}
+			else if(x>230 && x<254)
+			{
+				return 0x81;  // Euro dollar symbol
+			}
+			else if(x>261 && x<282)
+			{
+				return 0x80;  // Yen symbol
+			}
+			else if(x>293 && x<317)
+			{
+				return 0x82;   // Center dot
+			}
+		}
+	}
+	else if(y>197 && y<221)
+	{
+		if(x>5 && x<34 && y>197 && y<215)
+		{
+			key = KEY2;
+			return key; // CAPS FLAG
+		}
+
+		if(y>202 && y<221)
+		{
+			if(x>50 && x<84)
+			{
+				return '.';
+			}
+			else if(x>95 && x<131)
+			{
+				return ',';
+			}
+			else if(x>141 && x<179)
+			{
+				return '?';
+			}
+			else if(x>188 && x<224)
+			{
+				return '!';
+			}
+			else if(x>232 && x<269)
+			{
+				return 0x27;   // ' single quote
+			}
+			else if(x>285 && x<317)
+			{
+				key = BK_SPACE;
+				return key;  // Backspace flag
+			}
+		}
+	}
+	else if(x>5 && x<24 && y>225 && y<241)
+	{
+		key = KEY1;
+		return key; // Keyboard2 flag
+	}
+	else if(x>34 && x<57 && y>225 && y<241)
+	{
+		// Globe Symbol
+	}
+	else if(x>68 && x<251 && y>234 && y<250)
+	{
+		return ' ';
+	}
+	else if(x>262 && x<318 && y>231 && y<250)
+	{
+		key = CR;
+		return key;  // Carriage Return
+	}
+	return 0;
+}
+
+
+uchar GLCD_Get_Line(schar s[], uint8_t lim)
+{
+	COORDINATE_Type point1,point2;
+	schar kb;             // input character
+
+	uint8_t pointer=0;    // Pointer in buffer
+	uint8_t count=0;      // character count
+
+	uint16_t i=6,j=6;
+	Bool CAPSLOCK=0;
+
+    /*Frame Coordinate*/
+    point1.x = 0;
+    point1.y = 0;
+    point2.x = 320;
+    point2.y = 133;
+    GLCD_Frame(&point1,&point2,3,DarkGrey,LightGrey);
+
+	while(1)
+	{
+		kb = GLCD_Getche();
+
+		if(kb == CR)                        // CARRIAGE return
+		{
+			s[pointer] = '\0';             // put null char on last position
+		    i = 0;                         // Set x at far left position
+		    j += 8;                         // Set y at next position down
+			break;                         // yes, exit from this loop
+		}
+
+		else if(kb == BK_SPACE)
+		{
+			if(pointer==0)                 // any characters entered
+			{
+				continue;                    // no, so get another character
+			}
+
+			i=i-6;
+			GLCD_Erase(i,j,1,1,White);
+
+			pointer--;                     // decrement pointer
+			count--;                       // decrement character count
+
+			continue;
+		}
+
+		else if((pointer < lim) && (kb!=CR) && (kb!=BK_SPACE))
+		{
+		    if(kb == CAPS)
+		    {
+		    	CAPSLOCK = !CAPSLOCK;
+		    }
+		    if(CAPSLOCK && (kb!=CAPS) && (keybd==KEY1))
+		    {
+		    	s[pointer] = to_upper(kb);               // save character and increment pointer
+		    	pointer++;
+		    	count++;                       // increment count
+
+		    	if(i+5 >= 314)          // Performs character wrapping
+		    	{
+		    		i = 6;                           // Set x at far left position
+		    		j += 8;                 // Set y at next position down
+				}
+
+		    	gprintf(i,j,1,Black,"%c",to_upper(kb));
+		    	i=i+6;
+		    }
+		    else if(!CAPSLOCK && (kb!=CAPS) && (keybd==KEY1))
+		    {
+		    	s[pointer] = kb;               // save character and increment pointer
+		    	pointer++;
+		    	count++;                       // increment count
+
+		    	if(i+5 >= 314)          // Performs character wrapping
+		    	{
+		    		i = 6;                           // Set x at far left position
+		    		j += 8;                 // Set y at next position down
+				}
+
+		    	gprintf(i,j,1,Black,"%c",kb);
+		    	i=i+6;
+		    }
+		    else if(kb!=CAPS)
+		    {
+		    	s[pointer] = kb;               // save character and increment pointer
+		    	pointer++;
+		    	count++;                       // increment count
+
+		    	if(i+5 >= 314)          // Performs character wrapping
+		    	{
+		    		i = 6;                           // Set x at far left position
+		    		j += 8;                 // Set y at next position down
+				}
+
+		    	gprintf(i,j,1,Black,"%c",kb);
+		    	i=i+6;
+		    }
+
+			continue;                      // and get some more
+		}
+	}
+	return(count);
 }
 
 
