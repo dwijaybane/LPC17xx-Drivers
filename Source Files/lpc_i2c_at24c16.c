@@ -84,13 +84,13 @@ char I2C_Eeprom_Write_Byte (uint16 eep_address, uint8_t byte_data)
  * @param[in]   byte_data      Byte value
  * @return 		status
  **********************************************************************/
-char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint8_t length)
+char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint16_t length)
 {
 	/* Transmit setup */
 	I2C_M_SETUP_Type txsetup;
-	uint8_t ip_len,new_length;
+	uint16_t ip_len,new_length,i;
 	uint16 new_address;
-	uint8_t set_addr,i;
+	uint8_t set_addr;
 
 	/* Intern page length(ip_len) gives length from address that can be occupied in page */
 	ip_len = 0x10 - (eep_address % 0x10);
@@ -111,7 +111,7 @@ char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint8_t length)
 		}
 		txsetup.sl_addr7bit = E2P24C16_ID|set_addr;
 		txsetup.tx_data = I2C_Tx_Buf;
-		txsetup.tx_length = (ip_len+1);
+		txsetup.tx_length = ip_len+1;
 		txsetup.rx_data = NULL;
 		txsetup.rx_length = 0;
 		txsetup.retransmissions_max = 50;
@@ -123,10 +123,10 @@ char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint8_t length)
 
 		// Recursive function
 		delay_ms(5);
-		I2C_Eeprom_Write(new_address,(byte_data + ip_len),new_length);
+		I2C_Eeprom_Write(new_address,byte_data,new_length);
 	}
 
-	if(length <= ip_len+1)
+	if(length <= ip_len)
 	{
 		for(i=1;i<(length+1);i++)
 		{
@@ -134,7 +134,7 @@ char I2C_Eeprom_Write (uint16_t eep_address, uint8_t* byte_data, uint8_t length)
 		}
 		txsetup.sl_addr7bit = E2P24C16_ID|set_addr;
 		txsetup.tx_data = I2C_Tx_Buf;
-		txsetup.tx_length = (length+1);
+		txsetup.tx_length = length+1;
 		txsetup.rx_data = NULL;
 		txsetup.rx_length = 0;
 		txsetup.retransmissions_max = 50;
@@ -190,7 +190,7 @@ uint8_t I2C_Eeprom_Read_Byte (uint16_t eep_address)
  * @param[in]	eep_address    Word Address range[0000 - 4000]
  * @return 		Byte value
  **********************************************************************/
-char I2C_Eeprom_Read (uint16_t eep_address, uint8_t* buf_data, uint8_t length)
+char I2C_Eeprom_Read (uint16_t eep_address, uint8_t* buf_data, uint16_t length)
 {
 	/* Receive setup */
 	I2C_M_SETUP_Type rxsetup;
@@ -225,7 +225,7 @@ char I2C_Eeprom_Read (uint16_t eep_address, uint8_t* buf_data, uint8_t length)
  * @param[in]   length         size of buffer
  * @return 		None
  **********************************************************************/
-void Display_Eeprom_Array (uint8_t *string, uint8_t length)
+void Display_Eeprom_Array (uint8_t *string, uint16_t length)
 {
 	while(length)
 	{
