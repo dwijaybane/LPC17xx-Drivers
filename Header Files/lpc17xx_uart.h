@@ -36,12 +36,8 @@
 #define __LPC17XX_UART_H
 
 /* Includes ------------------------------------------------------------------- */
-#include "LPC17xx.h"
-#include "lpc_types.h"
-#include "lpc17xx_nvic.h"
-#include "lpc17xx_pinsel.h"
+#include "lpc_system_init.h"
 #include "stdarg.h"
-#include "lpc17xx_rtc.h"
 
 
 #ifdef __cplusplus
@@ -84,9 +80,9 @@ extern "C"
 /******************************************************************************/
 /*                       UART Mode                                            */
 /******************************************************************************/
-#define 	POLLING_SEL       DISABLE	         // Specify the type of interface
+#define 	POLLING_SEL       DISABLE      // Specify the type of interface
 #define 	INTERRUPT_SEL     ENABLE
-#define     RTC_SUPPORT       ENABLE
+#define     RTC_SUPPORT       DISABLE
 
 /******************************************************************************/
 /*                       UART Mode validation                                 */
@@ -104,6 +100,7 @@ extern "C"
 #endif
 #if RTC_SUPPORT
 	#define RTC_MODE
+	#include "lpc17xx_rtc.h"
 #endif
 
 
@@ -142,11 +139,14 @@ typedef struct
 /*
  * Variables
  */
-uint16 EscFlag;
 
+extern uint16 EscFlag;
+Bool UART0_RxReady,UART2_RxReady;
+extern uchar TTrgLvlU0,TrgLvlU2;
 // UART Ring buffer
-UART_RING_BUFFER_T rb;
 
+UART_RING_BUFFER_T rb0;
+UART_RING_BUFFER_T rb2;
 // Current Tx Interrupt enable state
 __IO FlagStatus TxIntStat;
 /**
@@ -587,6 +587,7 @@ typedef enum {
 	UART1_RS485_DIRCTRL_DTR			/**< Pin DTR is used for direction control */
 } UART_RS485_DIRCTRL_PIN_Type;
 
+
 /********************************************************************//**
 * @brief UART Configuration Structure definition
 **********************************************************************/
@@ -739,8 +740,7 @@ void UART_IrDAPulseDivConfig(LPC_UART_TypeDef *UARTx, UART_IrDA_PULSE_Type Pulse
 #ifdef INTERRUPT_MODE
 uint32_t UART_Send(LPC_UART_TypeDef *UARTx, uint8_t *txbuf,
 		uint32_t buflen, TRANSFER_BLOCK_Type flag);
-uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
-		uint32_t buflen, TRANSFER_BLOCK_Type flag);
+uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf,uint32_t buflen, TRANSFER_BLOCK_Type flag);
 #endif
 
 /* UART VT100 Terminal functions--------------------------------------------------------*/
