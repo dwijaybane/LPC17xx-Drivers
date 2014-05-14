@@ -272,8 +272,8 @@ typedef int32_t(*PFI)();
  * 	+ 0x2007C000 - 0x20083FFF: for SRAM
  *  + 0x20080000 - 0x20083FFF: for GPIO
  */
-//#define VAR_ADDRESS		0x2007C000
-//#define VAR_BIT			3 //Bit 3
+#define VAR_ADDRESS		0x2007C000
+#define VAR_BIT			3 //Bit 3
 
 /* Peripheral address
  * should be in range: 0x40000000 - 0x40100000
@@ -282,6 +282,52 @@ typedef int32_t(*PFI)();
 //#define PERI_BIT		5 //bit 5 - Master mode select
 //or instead of PERI_ADDRESS use LPC_SPI_BASE
 
+/******************************************************************************/
+/*                         Memory Management declarations                     */
+/******************************************************************************/
+/* Region size definitions */
+#define MPU_REGION_SIZE_32B		0x04
+#define MPU_REGION_SIZE_64B		0x05
+#define MPU_REGION_SIZE_128B	0x06
+#define MPU_REGION_SIZE_256B	0x07
+#define MPU_REGION_SIZE_512B	0x08
+#define MPU_REGION_SIZE_1KB		0x09
+#define MPU_REGION_SIZE_2KB		0x0A
+#define MPU_REGION_SIZE_4KB		0x0B
+#define MPU_REGION_SIZE_8KB		0x0C
+#define MPU_REGION_SIZE_16KB	0x0D
+#define MPU_REGION_SIZE_32KB	0x0E
+#define MPU_REGION_SIZE_64KB	0x0F
+#define MPU_REGION_SIZE_128KB	0x10
+#define MPU_REGION_SIZE_256KB	0x11
+#define MPU_REGION_SIZE_512KB	0x12
+#define MPU_REGION_SIZE_1MB		0x13
+#define MPU_REGION_SIZE_2MB		0x14
+#define MPU_REGION_SIZE_4MB		0x15
+#define MPU_REGION_SIZE_8MB		0x16
+#define MPU_REGION_SIZE_16MB	0x17
+#define MPU_REGION_SIZE_32MB	0x18
+#define MPU_REGION_SIZE_64MB	0x19
+#define MPU_REGION_SIZE_128MB	0x1A
+#define MPU_REGION_SIZE_256MB	0x1B
+#define MPU_REGION_SIZE_512MB	0x1C
+#define MPU_REGION_SIZE_1GB		0x1D
+#define MPU_REGION_SIZE_2GB		0x1E
+#define MPU_REGION_SIZE_4GB		0x1F
+
+/* Access permission definitions */
+#define MPU_NO_ACCESS							0x00
+#define MPU_PRIVILEGED_ACESS_USER_NO_ACCESS		0x01
+#define MPU_PRIVILEGED_RW_USER_READ_ONLY		0x02
+#define MPU_FULL_ACCESS							0x03
+#define MPU_UNPREDICTABLE						0x04
+#define MPU_PRIVILEGED_READ_ONLY_USER_NO_ACCESS	0x05
+#define MPU_READ_ONLY							0x06
+
+/* RASR bit definitions */
+#define MPU_RASR_REGION_SIZE(n)			((uint32_t)(n<<1))
+#define MPU_RASR_ACCESS_PERMISSION(n)	((uint32_t)(n<<24))
+#define MPU_REGION_ENABLE				((uint32_t)(1<<0))
 
 /**
  * @}
