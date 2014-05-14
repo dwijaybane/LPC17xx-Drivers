@@ -48,20 +48,19 @@ uchar Detect_Key (void)
 {
 	uint32_t x;
 	x = GPIO_ReadValue(0);    // Read Port0 Pin state and store in x
-	x |= 0xff87ffff;          // Now make all pins 1 except Key Pins
-	if(x ==(0xfff7ffff))      // check if Pin 0.19 is zero
+	if(!(x & _SBF(19,1)))      // check if Pin 0.19 is zero
 	{
 		return(1);
 	}
-	else if(x ==(0xffefffff)) // check if Pin 0.20 is zero
+	else if(!(x & _SBF(20,1))) // check if Pin 0.20 is zero
 	{
 		return(2);
 	}
-	else if(x ==(0xffdfffff)) // check if Pin 0.21 is zero
+	else if(!(x & _SBF(21,1))) // check if Pin 0.21 is zero
 	{
 		return(3);
 	}
-	else if(x ==(0xffbfffff)) // check if Pin 0.22 is zero
+	else if(!(x & _SBF(22,1))) // check if Pin 0.22 is zero
 	{
 		return(4);
 	}
