@@ -35,7 +35,7 @@
  * otherwise the default FW library configuration file must be included instead
  */
 
-
+#if 0
 /*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
 /*********************************************************************//**
  * @brief		RTC interrupt handler sub-routine
@@ -44,27 +44,15 @@
  **********************************************************************/
 void RTC_IRQHandler(void)
 {
-	/* This is increment counter interrupt*/
-	if (RTC_GetIntPending(LPC_RTC, RTC_INT_COUNTER_INCREASE))
-	{
-		/* Send debug information */
-		printf(LPC_UART0,"\x1b[2;1HSecond: %d02",RTC_GetTime (LPC_RTC, RTC_TIMETYPE_SECOND));
-
-		// Clear pending interrupt
-		RTC_ClearIntPending(LPC_RTC, RTC_INT_COUNTER_INCREASE);
-	}
-	/* check the Alarm match
+	/* check the Alarm match */
 	if (RTC_GetIntPending(LPC_RTC, RTC_INT_ALARM))
 	{
-		// Send debug information
-		printf(LPC_UART0,"\n\rALARM 10s matched!");
-
-		// Clear pending interrupt
+		/* Clear pending interrupt */
 		RTC_ClearIntPending(LPC_RTC, RTC_INT_ALARM);
-	}*/
+	}
 
 }
-
+#endif
 
 /* Public Functions ----------------------------------------------------------- */
 /** @addtogroup RTC_Public_Functions
@@ -120,7 +108,7 @@ void RTC_Config (void)
 //	RTC_AlarmIntConfig (LPC_RTC, RTC_TIMETYPE_SECOND, ENABLE);
 
     /* Enable RTC interrupt */
-    NVIC_EnableIRQ(RTC_IRQn);
+//    NVIC_EnableIRQ(RTC_IRQn);
 }
 
 
@@ -360,6 +348,7 @@ BOOL_8 Is_Leap_Year(uchar Year, uchar Century)
  *********************************************************************/
 uchar Change_Date (void)
 {
+	uchar DaysPerMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	char DateBuffer[3];
 	uint16_t Year[1];
 	char cp;                            /* input from keyboard */
@@ -595,6 +584,7 @@ uchar Change_Date (void)
     						if(RTCdata <=95)                     /* check year range (00-95) */
     						{
     							DateBuffer[3] = RTCdata;           /* store in year buffer */
+
 	    						DateFlag = 1;            /* Time data is ready for RTC */
          						count++;                 /* increment character count,will be 8 */
         						digit++;                 /* increment digit number, will be 4  */
@@ -612,6 +602,19 @@ uchar Change_Date (void)
     					if(RTCdata <=99)                     /* check year range (00-99) */
     					{
     						DateBuffer[3] = RTCdata;           /* store in year buffer */
+
+							/******* Check if the operator is sneakly to enter an invalid date *****/
+							DaysThisMonth = DaysPerMonth[DateBuffer[1]- 1];
+
+							if(Is_Leap_Year(DateBuffer[3], DateBuffer[2]) && (DateBuffer[1] == 2))
+							{
+								++DaysThisMonth;
+							}
+
+							if(DateBuffer[0] > DaysThisMonth)
+							{
+								DateBuffer[0] = DaysThisMonth;
+							}
 
     						DateFlag = 1;            /* Time data is ready for RTC */
     						count++;                 /* increment character count,will be 8 */
