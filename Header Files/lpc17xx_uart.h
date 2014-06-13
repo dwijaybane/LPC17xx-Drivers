@@ -693,7 +693,7 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, \
 		uint32_t buflen, TRANSFER_BLOCK_Type flag);
 #endif
 
-int16 getche(LPC_UART_TypeDef *UARTx);
+int16 getche(LPC_UART_TypeDef *UARTx, TRANSFER_BLOCK_Type mode);
 uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim);
 int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...);
 

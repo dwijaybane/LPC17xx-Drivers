@@ -906,14 +906,14 @@ uint32_t UART_Receive(LPC_UART_TypeDef *UARTx, uint8_t *rxbuf, uint32_t buflen, 
  * 				- LPC_UART3: UART3 peripheral
  * @return 		return with valid character or nothing
  **********************************************************************/
-int16 getche(LPC_UART_TypeDef *UARTx)
+int16 getche(LPC_UART_TypeDef *UARTx, TRANSFER_BLOCK_Type mode)
 {
 	uint8_t key[1];
 	uint32_t idx, len;
 
 	    if(UARTx == LPC_UART0)
 	    {
-		    len = UART_Receive(UARTx, key, 1, BLOCKING);
+		    len = UART_Receive(UARTx, key, 1, mode);
 		    /* Got some data */
 		    idx = 0;
 		    while (idx < len)
@@ -944,7 +944,7 @@ int16 getche(LPC_UART_TypeDef *UARTx)
 	    }
 	    else if(UARTx == LPC_UART2)
 	    {
-		    len = UART_Receive(UARTx, key, 1, BLOCKING);
+		    len = UART_Receive(UARTx, key, 1, mode);
 		    /* Got some data */
 		    idx = 0;
 		    while (idx < len)
@@ -977,7 +977,7 @@ uchar get_line(LPC_UART_TypeDef *UARTx, schar s[], uchar lim)
 
 	while(1)
 	{
-		kb = getche(UARTx);
+		kb = getche(UARTx,BLOCKING);
 
 		if (kb == In_ESC)                /* if ESCAPE pressed then exit */
 		{
@@ -1060,7 +1060,7 @@ int16 printf(LPC_UART_TypeDef *UARTx, const char *format, ...)
 {
 	uchar hex[]= "0123456789ABCDEF";
 	unsigned int width_dec[10] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000};
-	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000, 0x10000, 0x100000, 0x1000000};
+	unsigned int width_hex[10] = { 0x1, 0x10, 0x100, 0x1000, 0x10000, 0x100000, 0x1000000, 0x10000000};
 	unsigned int temp;
 
 	schar format_flag, fill_char;
