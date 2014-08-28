@@ -56,6 +56,37 @@ void UART0_IRQHandler(void)
 		}
 	}
 
+#ifdef AB_MODE
+    intsrc &= (UART_IIR_ABEO_INT | UART_IIR_ABTO_INT);
+    // Check if End of auto-baudrate interrupt or Auto baudrate time out
+    if (intsrc)
+    {
+        // Clear interrupt pending
+        if(intsrc & UART_IIR_ABEO_INT)
+            UART_ABClearIntPending(LPC_UART0, UART_AUTOBAUD_INTSTAT_ABEO);
+        if (intsrc & UART_IIR_ABTO_INT)
+            UART_ABClearIntPending(LPC_UART0, UART_AUTOBAUD_INTSTAT_ABTO);
+        if (Synchronous == RESET)
+        {
+            /* Interrupt caused by End of auto-baud */
+            if (intsrc & UART_AUTOBAUD_INTSTAT_ABEO)
+            {
+                // Disable AB interrupt
+                UART_IntConfig(LPC_UART0, UART_INTCFG_ABEO, DISABLE);
+                // Set Sync flag
+                Synchronous = SET;
+            }
+
+            /* Auto-Baudrate Time-Out interrupt (not implemented) */
+            if (intsrc & UART_AUTOBAUD_INTSTAT_ABTO)
+            {
+                /* Just clear this bit - Add your code here */
+                UART_ABClearIntPending(LPC_UART0, UART_AUTOBAUD_INTSTAT_ABTO);
+            }
+        }
+    }
+#endif
+
 	// Receive Data Available or Character time-out
 	if ((tmp == UART_IIR_INTID_RDA) || (tmp == UART_IIR_INTID_CTI))
 	{
@@ -101,6 +132,37 @@ void UART2_IRQHandler(void)
 			}
 		}
 	}
+
+#ifdef AB_MODE
+    intsrc &= (UART_IIR_ABEO_INT | UART_IIR_ABTO_INT);
+    // Check if End of auto-baudrate interrupt or Auto baudrate time out
+    if (intsrc)
+    {
+        // Clear interrupt pending
+        if(intsrc & UART_IIR_ABEO_INT)
+            UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABEO);
+        if (intsrc & UART_IIR_ABTO_INT)
+            UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABTO);
+        if (Synchronous == RESET)
+        {
+            /* Interrupt caused by End of auto-baud */
+            if (intsrc & UART_AUTOBAUD_INTSTAT_ABEO)
+            {
+                // Disable AB interrupt
+                UART_IntConfig(LPC_UART2, UART_INTCFG_ABEO, DISABLE);
+                // Set Sync flag
+                Synchronous = SET;
+            }
+
+            /* Auto-Baudrate Time-Out interrupt (not implemented) */
+            if (intsrc & UART_AUTOBAUD_INTSTAT_ABTO)
+            {
+                /* Just clear this bit - Add your code here */
+                UART_ABClearIntPending(LPC_UART2, UART_AUTOBAUD_INTSTAT_ABTO);
+            }
+        }
+    }
+#endif
 
 	// Receive Data Available or Character time-out
 	if ((tmp == UART_IIR_INTID_RDA) || (tmp == UART_IIR_INTID_CTI))
@@ -260,6 +322,13 @@ static Status uart_set_divisors(LPC_UART_TypeDef *UARTx, uint32_t baudrate)
  *********************************************************************/
 void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 {
+#ifdef AB_MODE
+    uint8_t syncprint[] = "AutoBaudrate Status: Synchronous! \n\n\r";
+
+    // Auto baudrate configuration structure
+    UART_AB_CFG_Type ABConfig;
+#endif
+
 	// UART Configuration structure variable
 	UART_CFG_Type UARTConfigStruct;
 	// UART FIFO configuration Struct variable
@@ -359,6 +428,14 @@ void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 	UART_TxCmd(UARTx, ENABLE);
 
 #ifdef INTERRUPT_MODE
+
+#ifdef AB_MODE
+    /* Enable UART End of Auto baudrate interrupt */
+    UART_IntConfig(UARTx, UART_INTCFG_ABEO, ENABLE);
+    /* Enable UART Auto baudrate timeout interrupt */
+    UART_IntConfig(UARTx, UART_INTCFG_ABTO, ENABLE);
+#endif
+
 	UART_IntConfig(UARTx, UART_INTCFG_RBR, ENABLE);
 	/* Enable UART line status interrupt */
 	UART_IntConfig(UARTx, UART_INTCFG_RLS, ENABLE);
@@ -400,6 +477,26 @@ void UART_Config(LPC_UART_TypeDef *UARTx, long int baud)
 		/* Enable Interrupt for UART2 channel */
 		NVIC_EnableIRQ(UART2_IRQn);
 	}
+
+#ifdef AB_MODE
+    /* ---------------------- Auto baud rate section ----------------------- */
+        // Reset Synchronous flag for auto-baudrate mode
+        Synchronous = RESET;
+
+        // Configure Auto baud rate mode
+        ABConfig.ABMode = UART_AUTOBAUD_MODE0;
+        ABConfig.AutoRestart = ENABLE;
+
+        // Start auto baudrate mode
+        UART_ABCmd(UARTx, &ABConfig, ENABLE);
+
+        /* Loop until auto baudrate mode complete */
+        while (Synchronous == RESET);
+
+        // Print status of auto baudrate
+        UART_Send(UARTx, syncprint, sizeof(syncprint), BLOCKING);
+    /* ---------------------- End of Auto baud rate section ----------------------- */
+#endif
 
 #endif
 }

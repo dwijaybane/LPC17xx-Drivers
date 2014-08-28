@@ -63,6 +63,7 @@ extern "C"
 /******************************************************************************/
 #define 	POLLING_SEL       DISABLE      // Specify the type of interface
 #define 	INTERRUPT_SEL     ENABLE
+#define     AB_SEL            DISABLE
 #define     RTC_SUPPORT       DISABLE
 
 /******************************************************************************/
@@ -79,6 +80,11 @@ extern "C"
 #else
 	#error Uart Mode not defined
 #endif
+
+#if AB_SEL
+    #define AB_MODE
+#endif
+
 #if RTC_SUPPORT
 	#define RTC_MODE
 	#include "lpc17xx_rtc.h"
@@ -128,8 +134,15 @@ extern uchar TTrgLvlU0,TrgLvlU2;
 
 UART_RING_BUFFER_T rb0;
 UART_RING_BUFFER_T rb2;
+
 // Current Tx Interrupt enable state
 __IO FlagStatus TxIntStat;
+
+#ifdef AB_MODE
+/* Synchronous Flag */
+__IO FlagStatus Synchronous;
+#endif
+
 /**
  * @}
  */
