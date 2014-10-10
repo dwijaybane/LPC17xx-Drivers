@@ -728,37 +728,29 @@ void UART_DeInit(LPC_UART_TypeDef* UARTx)
 
 	UART_TxCmd(UARTx, DISABLE);
 
-#ifdef _UART0
 	if (UARTx == (LPC_UART_TypeDef *)LPC_UART0)
 	{
 		/* Set up clock and power for UART module */
 		CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART0, DISABLE);
 	}
-#endif
 
-#ifdef _UART1
 	if (((LPC_UART1_TypeDef *)UARTx) == LPC_UART1)
 	{
 		/* Set up clock and power for UART module */
 		CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART1, DISABLE);
 	}
-#endif
 
-#ifdef _UART2
 	if (UARTx == LPC_UART2)
 	{
 		/* Set up clock and power for UART module */
 		CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART2, DISABLE);
 	}
-#endif
 
-#ifdef _UART3
 	if (UARTx == LPC_UART3)
 	{
 		/* Set up clock and power for UART module */
 		CLKPWR_ConfigPPWR (CLKPWR_PCONP_PCUART3, DISABLE);
 	}
-#endif
 }
 
 /*****************************************************************************//**
