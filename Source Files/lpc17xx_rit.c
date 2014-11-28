@@ -13,13 +13,12 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc17xx_rit.h"
-#include "lpc17xx_clkpwr.h"
 
 /* If this source file built with example, the LPC17xx FW library configuration
  * file in each example directory ("lpc17xx_libcfg.h") must be included,
  * otherwise the default FW library configuration file must be included instead
  */
-
+#if 0
 /*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
 /*********************************************************************//**
  * @brief		RIT interrupt handler sub-routine
@@ -29,8 +28,9 @@
 void RIT_IRQHandler(void)
 {
 	RIT_GetIntStatus(LPC_RIT); //call this to clear interrupt flag
-	LPC_GPIO0->FIOPIN ^= _BIT(10); //Toggle P0.10 led
+    LPC_GPIO0->FIOPIN ^= _BIT(10); //Toggle P0.10 led
 }
+#endif
 
 /* Public Functions ----------------------------------------------------------- */
 /** @addtogroup RIT_Public_Functions
@@ -43,16 +43,25 @@ void RIT_IRQHandler(void)
 * @param[in]	RITx	  RIT peripheral selected, should be:
 *   			- LPC_RIT: RIT peripheral
 * @param[in]	Interval  Time interval in millisecond
+* @param[in]    psType    Time Type  - RIT_MS (millisecond)
+*                                    - RIT_US (microsecond)
 * @return 		None
 *********************************************************************/
-void RIT_Config(LPC_RIT_TypeDef *RITx, uint32_t time_interval)
+void RIT_Config(LPC_RIT_TypeDef *RITx, uint32_t time_interval, RIT_TIME_Type psType)
 {
 	RIT_Init(RITx);
 			/* Configure time_interval for RIT
-			 * In this case: time_interval = 1000 ms = 1s
+			 * In this case: time_interval = 1000 ms = 1s if psType is RIT_MS
 			 * So, RIT will generate interrupt each 1s
 			 */
-	RIT_TimerConfig(RITx,time_interval);
+	if(psType == RIT_MS)
+	{
+	    RIT_TimerConfig(RITx,time_interval);
+	}
+	else if(psType == RIT_US)
+	{
+	    RIT_TimerConfig_US(RITx,time_interval);
+	}
 	NVIC_EnableIRQ(RIT_IRQn);
 }
 
@@ -114,7 +123,7 @@ void RIT_TimerConfig(LPC_RIT_TypeDef *RITx, uint32_t time_interval)
 	 * COMPVAL = (RIT_PCLK * time_interval)/1000
 	 * (with time_interval unit is millisecond)
 	 */
-	cmp_value = (clock_rate /1000) * time_interval;
+	cmp_value = (clock_rate/1000) * time_interval;
 	RITx->RICOMPVAL = cmp_value;
 
 	/* Set timer enable clear bit to clear timer to 0 whenever
@@ -123,6 +132,34 @@ void RIT_TimerConfig(LPC_RIT_TypeDef *RITx, uint32_t time_interval)
 	RITx->RICTRL |= (1<<1);
 }
 
+
+/******************************************************************************//*
+ * @brief       Set compare value, mask value and time counter value
+ * @param[in]   RITx is RIT peripheral selected, should be: LPC_RIT
+ * @param[in]   time_interval: timer interval value (uSec)
+ * @return      None
+ *******************************************************************************/
+void RIT_TimerConfig_US(LPC_RIT_TypeDef *RITx, uint32_t time_interval)
+{
+    uint32_t clock_rate, cmp_value;
+    CHECK_PARAM(PARAM_RITx(RITx));
+
+    // Get PCLK value of RIT
+    clock_rate = CLKPWR_GetPCLK(CLKPWR_PCLKSEL_RIT);
+
+    /* calculate compare value for RIT to generate interrupt at
+     * specified time interval
+     * COMPVAL = (RIT_PCLK * time_interval)/1000000
+     * (with time_interval unit is microsecond)
+     */
+    cmp_value = (clock_rate/1000000) * time_interval;
+    RITx->RICOMPVAL = cmp_value;
+
+    /* Set timer enable clear bit to clear timer to 0 whenever
+     * counter value equals the contents of RICOMPVAL
+     */
+    RITx->RICTRL |= (1<<1);
+}
 
 /******************************************************************************//*
  * @brief 		Enable/Disable Timer

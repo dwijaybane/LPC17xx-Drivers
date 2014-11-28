@@ -17,8 +17,7 @@
 #define LPC17XX_RIT_H_
 
 /* Includes ------------------------------------------------------------------- */
-#include "LPC17xx.h"
-#include "lpc_types.h"
+#include "lpc_system_init.h"
 
 
 #ifdef __cplusplus
@@ -47,10 +46,18 @@ extern "C"
 
 /** Macro to determine if it is valid RIT peripheral */
 #define PARAM_RITx(n)	(((uint32_t *)n)==((uint32_t *)LPC_RIT))
+
+/**
+ * @brief RIT Time type definitions
+ */
+typedef enum {
+    RIT_MS      = (0),                      /*!< RIT value in millisecond Select */
+    RIT_US                                  /*!< RIT value in microsecond Select */
+} RIT_TIME_Type;
+
 /**
  * @}
  */
-
 
 
 /* Public Functions ----------------------------------------------------------- */
@@ -58,12 +65,13 @@ extern "C"
  * @{
  */
 /* RIT Init/DeInit functions */
-void RIT_Config(LPC_RIT_TypeDef *RITx, uint32_t time_interval);
+void RIT_Config(LPC_RIT_TypeDef *RITx, uint32_t time_interval, RIT_TIME_Type psType);
 void RIT_Init(LPC_RIT_TypeDef *RITx);
 void RIT_DeInit(LPC_RIT_TypeDef *RITx);
 
 /* RIT config timer functions */
 void RIT_TimerConfig(LPC_RIT_TypeDef *RITx, uint32_t time_interval);
+void RIT_TimerConfig_US(LPC_RIT_TypeDef *RITx, uint32_t time_interval);
 
 /* Enable/Disable RIT functions */
 void RIT_TimerClearCmd(LPC_RIT_TypeDef *RITx, FunctionalState NewState);
