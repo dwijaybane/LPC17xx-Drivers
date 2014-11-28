@@ -35,6 +35,14 @@ extern "C"
 *****************************************************************************************
 */
 
+/**
+ * Buzzer Port and Pins
+ * BSP Buzzer Bz1 P3.26
+ * ASK-25 Buzzer P0.22
+ */
+#define BUZZER_PORT   3
+#define BUZZER_PIN    _BIT(26)
+
 #define MELODY_LENGTH 95
 
 /* Key at 20kHz interrupt service routine Timer2 */
@@ -116,6 +124,7 @@ extern Bool play_note;
  * @{
  */
 
+void Buzzer_Config(void);
 void Play_Frequency(uint16_t freq, uint16_t dur);
 void Play_Melody(void);
 

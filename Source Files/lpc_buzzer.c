@@ -77,6 +77,13 @@ const uint16_t duration[MELODY_LENGTH] =
  
 /*-------------------------PUBLIC FUNCTIONS------------------------------*/
 
+
+void Buzzer_Config(void)
+{
+    GPIO_SetDir(BUZZER_PORT, BUZZER_PIN, 1);        // Buzzer Output
+    GPIO_ClearValue(BUZZER_PORT, BUZZER_PIN);       // Buzzer Off
+}
+
 /*********************************************************************//**
  * @brief	Set up timer 1 to play the desired frequency (in Hz) and for the the
  *          desired duration (in ms). Allowed frequencies are from 40 Hz to 5 kHz.
@@ -127,7 +134,7 @@ void Play_Melody(void)
 	}
 	play_note = OFF; /* stop tune */
 
-	GPIO_ClearValue(3, _BIT(26)); // Buzzer Off
+	GPIO_ClearValue(BUZZER_PORT, BUZZER_PIN); // Buzzer Off
 }
 
 
