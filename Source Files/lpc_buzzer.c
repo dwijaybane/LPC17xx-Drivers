@@ -69,6 +69,42 @@ const uint16_t duration[MELODY_LENGTH] =
   250, 250, 125, 375, 500
 };
 
+
+/*----------------- INTERRUPT SERVICE ROUTINES --------------------------*/
+/*********************************************************************//**
+ * @brief       RIT interrupt handler sub-routine
+ * @param[in]   None
+ * @return      None
+ **********************************************************************/
+void RIT_IRQHandler(void)
+{
+    RIT_GetIntStatus(LPC_RIT); //call this to clear interrupt flag
+
+    /* generate one note; freq + duration */
+    if(play_note) /* Flag to play note */
+    {
+        if(timeout)  /* Note Duration */
+        {
+            if(on_timer)
+            {
+                GPIO_SetValue(BUZZER_PORT, BUZZER_PIN);    // Buzzer On
+                --on_timer;
+            }
+            else if(off_timer)
+            {
+                GPIO_ClearValue(BUZZER_PORT, BUZZER_PIN);  // Buzzer Off
+                --off_timer;
+            }
+            else
+            {
+                on_timer = on_time;     /* Reload on_time  */
+                off_timer = off_time;   /* Reload off_time */
+            }
+            --timeout;  /*decrement timer */
+        }
+    }/* end of buzzer's code */
+}
+
 /************************** PUBLIC FUNCTIONS *************************/
 /* Public Functions ----------------------------------------------------------- */
 /** @addtogroup BUZZER_Public_Functions
@@ -76,12 +112,12 @@ const uint16_t duration[MELODY_LENGTH] =
  */
  
 /*-------------------------PUBLIC FUNCTIONS------------------------------*/
-
-
 void Buzzer_Config(void)
 {
     GPIO_SetDir(BUZZER_PORT, BUZZER_PIN, 1);        // Buzzer Output
     GPIO_ClearValue(BUZZER_PORT, BUZZER_PIN);       // Buzzer Off
+
+    RIT_Config(LPC_RIT, 50, RIT_US);
 }
 
 /*********************************************************************//**

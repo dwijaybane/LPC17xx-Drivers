@@ -18,7 +18,7 @@
 
 /* Includes ------------------------------------------------------------------- */
 #include "lpc_system_init.h"
-
+#include "lpc17xx_rit.h"
 
 #ifdef __cplusplus
 extern "C"
