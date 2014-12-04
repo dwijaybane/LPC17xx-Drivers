@@ -120,7 +120,7 @@ uchar Change_Time (void)
 
 	while(1)
 	{
-		cp = getche(LPC_UART0);                /* get input character */
+		cp = getche(LPC_UART0, BLOCKING);                /* get input character */
 
 		if (cp == In_ESC)           /* if ESCAPE pressed then exit */
 		{
@@ -353,7 +353,7 @@ uchar Change_Date (void)
 
     while(1)
     {
-    	cp = getche(LPC_UART0);                   /* get input character */
+    	cp = getche(LPC_UART0, BLOCKING);                   /* get input character */
 
     	if(cp == In_ESC)                 /* if ESCAPE pressed then exit */
     	{
