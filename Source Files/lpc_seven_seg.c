@@ -13,7 +13,6 @@
  */
 
 /* Includes ------------------------------------------------------------------- */
-#include "lpc_system_init.h"
 #include "lpc_seven_seg.h"
 
 /* If this source file built with example, the LPC17xx FW library configuration
@@ -53,7 +52,7 @@ void Seven_Seg_Init (void)
  *                      - 2: Seg2
  * @return 		None
  **********************************************************************/
-void Display_Digit (uchar Digit, uchar Seg)
+void Display_Digit (uint8_t Digit, uint8_t Seg)
 {
 	uchar Number[16]= {ZERO,ONE,TWO,THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE};
 
@@ -90,7 +89,7 @@ void Display_Digit (uchar Digit, uchar Seg)
  * @param[in]	Number	Two digit Number to be displayed
  * @return 		None
  **********************************************************************/
-void Display_Data (uint16 Number)
+void Display_Data (uint16_t Number)
 {
 	uint16 i=0, j=TOTAL_SEGMENTS-1;
 	uint16 Digits[TOTAL_SEGMENTS];

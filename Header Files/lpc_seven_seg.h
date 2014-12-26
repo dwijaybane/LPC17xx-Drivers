@@ -18,7 +18,7 @@
 /* Includes ------------------------------------------------------------------- */
 #include "LPC17xx.h"
 #include "lpc_types.h"
-
+#include "lpc_system_init.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -77,8 +77,8 @@ extern "C"
  */
 
 void Seven_Seg_Init (void);
-void Display_Digit (uchar Digit, uchar Seg);
-void Display_Data (uint16 Number);
+void Display_Digit (uint8_t Digit, uint8_t Seg);
+void Display_Data (uint16_t Number);
 
 
 /**
