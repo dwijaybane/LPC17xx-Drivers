@@ -53,6 +53,58 @@ extern uchar status;
  *  Lcd Custom Patterns
  */
 //extern uchar Character1[8];
+/**
+ *  Stepper Motor
+ */
+extern uchar SmAntClk[4];
+extern uchar SmClk[4];
+extern uchar temp;
+
+/**
+ * @}
+ */
+
+/**
+ *  ADC
+ */
+extern uint32_t adc_value;
+
+/**
+ * @}
+ */
+
+
+/**
+ *  Timer3
+ */
+extern uint32_t T1, T2;
+extern BOOL_8 toggle_tim3;
+
+/**
+ * @}
+ */
+
+
+/**
+ *  Timer1
+ */
+extern BOOL_8 first_capture,done;
+extern uint32_t capture;
+extern uint8_t count;
+
+/**
+ * @}
+ */
+
+
+/**
+ *  vibra sense
+ */
+extern BOOL_8 vibration;
+
+/**
+ * @}
+ */
 
 
 
