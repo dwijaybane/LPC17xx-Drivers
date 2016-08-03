@@ -324,6 +324,12 @@ void TIM_Cmd(LPC_TIM_TypeDef *TIMx, FunctionalState NewState);
 uint32_t TIM_GetCaptureValue(LPC_TIM_TypeDef *TIMx, TIM_COUNTER_INPUT_OPT CaptureChannel);
 void TIM_ResetCounter(LPC_TIM_TypeDef *TIMx);
 
+/* Micro sec funtion --------------*/
+void US_TimerInit(void);
+inline void US_TimerStop(void);
+uint32_t US_TimerRead();
+void delay_us(uint32_t us);
+
 /**
  * @}
  */
